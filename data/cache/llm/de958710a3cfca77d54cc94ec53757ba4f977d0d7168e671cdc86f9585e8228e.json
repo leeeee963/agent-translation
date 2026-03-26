@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide68_shape1]]\nSAS的广义回归 (Generalized Regression) 接受所有类型的数据（分类数据和连续数据）。因此，广义回归可以替代普通最小二乘回归 (OLS Regression) 和逻辑回归模型。  \n它能够解决多重共线性 (Multi-collinearity) 问题。  \n它能够避免过拟合。  \n与传统回归建模中一次性方法不同，广义回归通过探索不同的解决方案，最终结果是所有可能路径中的最佳方案。"}

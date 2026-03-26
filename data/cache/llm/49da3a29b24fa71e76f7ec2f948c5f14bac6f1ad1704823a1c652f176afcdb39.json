@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide21_shape0]]\n丹齊格選擇器\n\n[[BLOCK:slide21_shape1]]\n僅適用於指定分佈為常態且未選擇無截距選項的情況。  \n對回歸係數絕對值的總和進行懲罰。\n\n[[BLOCK:slide22_shape0]]\nLASSO\n\n[[BLOCK:slide22_shape1]]\n會將回歸係數歸零 → 通過刪除部分變量來進行選擇。  \n不適合寬數據結構：如果預測變量過多而觀測值過少（高 p，低 n），LASSO 會很快飽和（停止進一步選擇變量）。  \n當存在過多共線性預測變量時，LASSO 只會選擇其中一個，忽略其他的。"}

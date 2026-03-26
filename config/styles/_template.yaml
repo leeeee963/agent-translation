@@ -1,0 +1,43 @@
+# ============================================================
+# 风格模板 — 复制此文件并重命名来创建你自己的翻译风格
+# ============================================================
+# 文件名即风格 key（如 marketing.yaml → --style marketing）
+#
+# 所有字段都是可选的，填多少由你决定：
+# - 只写 name + description 就是一个最简风格
+# - 加上 guidelines 就能细粒度控制翻译策略
+# - 加上 examples 就能让 LLM 看到期望的翻译效果
+# - 加上 avoid 就能明确告诉 LLM 什么不能做
+#
+# 未来你还可以扩展任意字段（如 tone, audience, register 等），
+# 系统会自动把它们组装进 prompt。
+# ============================================================
+
+# [必填] 显示名称
+name: "我的自定义风格"
+
+# [必填] 一句话描述
+description: "简短描述这个风格的特点和适用场景"
+
+# [推荐] 翻译指南 — 越具体，LLM 越能理解你的期望
+guidelines: |
+  - 第一条翻译要求
+  - 第二条翻译要求
+  - ...
+
+# [可选] 翻译示例 — 最直观的方式告诉 LLM 你要什么效果
+examples:
+  - source: "English source text here"
+    target: "这里是期望的翻译效果"
+    note: "为什么这样翻译更好"
+
+# [可选] 禁忌 — 明确告诉 LLM 什么不要做
+avoid:
+  - "不希望出现的表达方式"
+
+# [可选] 自动匹配规则 — 用户未指定 --style 时，根据文件类型或领域自动选择此风格
+# file_types: 匹配文件扩展名（如 .srt, .pptx）
+# domains: 匹配自动检测到的文档领域（如 technical, business, medical, legal, academic）
+# match:
+#   file_types: [.srt, .vtt]
+#   domains: [technical]

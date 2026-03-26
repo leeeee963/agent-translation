@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide23_shape0]]\nLASSO\n\n[[BLOCK:slide23_shape1]]\n可能因偏差問題而無法具備預言性質。  \n預言者知道真相：即變數的真實子集。  \n預言性質：估計值的漸近分布與最大似然估計 (Maximum Likelihood Estimator, MLE) 的漸近分布相同。\n\n[[BLOCK:slide24_shape0]]\nDouble LASSO\n\n[[BLOCK:slide24_shape1]]\n分為兩個階段：  \n第一階段：建立模型以生成第二階段所需的項目（包括預測變數及其斜率估計值）。  \n第二階段：使用第一階段的項目進行調整。  \n適用於寬數據結構：當樣本數小於預測變數數量時尤為有用。  \n第二階段不會過度懲罰應包含的項目。"}

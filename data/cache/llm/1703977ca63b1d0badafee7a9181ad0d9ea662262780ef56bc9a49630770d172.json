@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide23_shape1]]\nIt may lack the oracle property due to its bias issues.  \nThe oracle knows the truth: that is, the true subset of variables. The oracle property refers to the situation where the asymptotic distribution of an estimator is identical to that of the Maximum Likelihood Estimator (MLE)."}

@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide26_shape1]]\nStrategies for addressing collinearity and variance inflation: shrink regression coefficients toward zero.  \nHowever, the regression coefficients will not be exactly zero; it may retain all coefficients or none at all.  \nThis is akin to controlling cancer cells but being unable to completely eliminate them."}

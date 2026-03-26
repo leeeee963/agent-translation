@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide2_shape0]]\nOLS回归\n\n[[BLOCK:slide2_shape1]]\n最小平方＝残差 (residual) 的平方和最小  \n残差＝实际值与预测值之间的距离  \n最佳拟合\n\n[[BLOCK:slide3_shape0]]\nR平方\n\n[[BLOCK:slide3_shape1]]\n简单回归的目的是寻找变量之间的关系。  \n当存在多个预测变量时，这种多重关系用 R平方 (R-square) 表示，即模型所解释的方差比例。\n\n[[BLOCK:slide3_shape2_shape0]]\nY\n\n[[BLOCK:slide3_shape2_shape1]]\nX\n\n[[BLOCK:slide3_shape2_shape2]]\nR平方"}

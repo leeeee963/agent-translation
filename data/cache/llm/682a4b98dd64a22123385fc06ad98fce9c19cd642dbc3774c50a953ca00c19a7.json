@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide45_shape2]]\n•   点击磁盘图标保存程序。  \n\n•   然后点击“Run”按钮运行代码。\n\n[[BLOCK:slide45_shape3]]\n示例：糖尿病数据\n\n[[BLOCK:slide46_shape1]]\n•   输出结果  \n•   截距是模型的常数项，一般可忽略。  \n•   表格显示最终保留了六个变量。  \n\n•   在比较修正赤池信息准则（AICC）时，数值越小表示模型越优。\n\n[[BLOCK:slide46_shape2]]\n示例：糖尿病数据"}

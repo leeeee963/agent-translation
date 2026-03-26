@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide4_shape0]]\n理想情况\n\n[[BLOCK:slide4_shape1]]\n所有预测变量都是正交的\n\n[[BLOCK:slide5_shape0]]\n膨胀的解释方差\n\n[[BLOCK:slide5_shape1]]\n想象一下，Y和多个X之间的重叠区域就是解释的方差（多重关系）。  \n当你在Y上加入越来越多的X时，Y的圆几乎被完全覆盖。R平方 (R Square) = 0.89！哇！太棒了！哈利路亚！"}

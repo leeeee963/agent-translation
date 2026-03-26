@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide21_shape0]]\nDantzig 选择器\n\n[[BLOCK:slide21_shape1]]\n仅在数据服从正态分布且未勾选“无截距”选项时适用。  \n通过对回归系数绝对值之和加以惩罚来约束模型。\n\n[[BLOCK:slide22_shape0]]\nLASSO 回归（LASSO）\n\n[[BLOCK:slide22_shape1]]\n它会将部分回归系数压缩为零，从而通过剔除变量实现变量选择。  \n不适用于“宽数据”结构：当预测变量过多而观测样本过少（高 p、低 n）时，LASSO 回归很快就会达到饱和（停止继续选择变量）。  \n当存在大量共线性预测变量时，LASSO 回归通常只会保留其中一个，而忽略其余变量。"}

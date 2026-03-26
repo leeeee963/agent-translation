@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide47_shape1]]\n• 图表显示了解的路径。  \n• 横轴表示收缩参数。  \n• 随着算法遍历各种备选模型，赤池信息准则 (AICc) 的值会逐渐减小。  \n当 AICc 曲线变平时，意味着无法进一步改进（AICc 无法再减小），因此采用最终解。\n\n[[BLOCK:slide47_shape2]]\n示例：糖尿病数据\n\n[[BLOCK:slide48_shape2]]\n• 基于 AICc 选择的模型是第 6 步的模型。  \n\n• 最佳预测变量为 BMI、BP、HDL、LTG 和 Glucose。\n\n[[BLOCK:slide48_shape3]]\n示例：糖尿病数据"}

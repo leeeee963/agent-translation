@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide71_shape0]]\n建议\n\n[[BLOCK:slide71_shape1]]\n如果你的同事或审稿人希望看到较为传统的做法（例如希望明确出现“回归”这一术语），可以采用广义回归（Generalized Regression）。  \n当自变量数量较多且存在共线性时，可使用广义回归（GR）。  \n在大多数情况下，弹性网络（Elastic Net）通常是更好的选择。  \n如果数据呈现“宽数据”结构，可以采用双重 LASSO 回归。  \n一般而言，更推荐使用自适应弹性网络（Adaptive Elastic Net）。  \n如果变量之间存在非线性关系，可以使用人工神经网络（将在第 7 单元讨论）。"}

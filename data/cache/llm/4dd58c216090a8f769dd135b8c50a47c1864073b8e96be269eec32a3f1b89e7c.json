@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide23_shape0]]\nLASSO\n\n[[BLOCK:slide23_shape1]]\n可能因为偏差问题而不具备“神谕”性质。  \n“神谕”知道真相：即变量的真实子集。  \n“神谕”性质：估计量的渐近分布与最大似然估计量 (Maximum Likelihood Estimator, MLE) 的渐近分布相同。\n\n[[BLOCK:slide24_shape0]]\n双阶段LASSO\n\n[[BLOCK:slide24_shape1]]\n两个阶段：  \n第一阶段：拟合模型以生成第二阶段所需的项（预测变量及其斜率估计值）。  \n第二阶段：利用第一阶段生成的项进行调整。  \n适用于宽数据结构：当样本量小于预测变量数量时尤为有用。  \n第二阶段不会过度惩罚那些应被包含的项。"}

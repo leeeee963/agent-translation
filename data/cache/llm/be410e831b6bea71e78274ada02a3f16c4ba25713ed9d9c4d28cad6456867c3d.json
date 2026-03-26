@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide14_shape0]]\nKISS！\n\n[[BLOCK:slide14_shape1]]\n也被称为正则化回归 (Regularized Regression)：旨在减少方差并提高模型的泛化能力，从而避免过拟合。  \n也被称为惩罚回归：如果模型过于复杂或拟合度膨胀，就会对其进行惩罚 → 保持简单，笨蛋 (KISS)！\n\n[[BLOCK:slide15_shape0]]\n损失函数 (Loss Function)\n\n[[BLOCK:slide15_shape1]]\n一种将一个或多个变量的事件映射到一个实数的函数，用于表示该事件的成本。  \n如果事件发生错误，成本是多少？你会失去什么？  \n在统计学中，成本是误差或残差 (Residual)。"}

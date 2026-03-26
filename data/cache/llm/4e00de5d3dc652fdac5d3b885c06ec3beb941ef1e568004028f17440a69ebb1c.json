@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide19_shape0]]\n正则化\n\n[[BLOCK:slide19_shape1]]\n最小二乘回归 (OLS Regression) 和惩罚回归 (PR) 的主要区别在于，PR 在损失函数中增加了一个正则化项，以优化系数估计，因此 PR 也被称为正则化回归。  \nL1 正则化 (LASSO)：将系数估计值的绝对值之和作为正则化项。  \nL2 正则化 (岭回归 (Ridge))：将系数估计值的平方和作为正则化项。\n\n[[BLOCK:slide20_shape0]]\n模型优化选项\n\n[[BLOCK:slide20_shape1]]\n广义选择方法优于经典方法。"}

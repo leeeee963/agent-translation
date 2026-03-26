@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide2_shape1]]\n·    Pythonでは、操作の自由度がある程度あります  \n·    pip install sweetviz  \n·    import sweetviz as sV  \n·    import pandas as pd  \n·    df = pd.read_csv('/Volumes/Extreme SSD/data_science_book/datasets/Chapter6/Diabetes.csv')  \n·    my_report = sv.analyze(df)  \n·    my_report.show_html()  "}

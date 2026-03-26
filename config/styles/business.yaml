@@ -1,0 +1,21 @@
+# 商务风格
+# 适用：商业提案、工作邮件、会议纪要、项目报告
+
+name: "商务"
+description: "专业但不过于学术，适合商业文档、邮件"
+prompt_name: "Business"
+prompt_description: "Professional, efficient, and suitable for business documents, reports, and email"
+
+match:
+  domains: [business]
+
+guidelines: |
+  - Keep the tone professional, polite, and business-ready.
+  - Avoid language that is either too academic or too casual.
+  - Make decisions, conclusions, and next steps easy to identify.
+  - Keep numbers, metrics, and commitments prominent and unambiguous.
+  - Prefer concise, readable sentences that support fast scanning.
+
+avoid:
+  - "overly casual phrasing"
+  - "mixed-language office slang"

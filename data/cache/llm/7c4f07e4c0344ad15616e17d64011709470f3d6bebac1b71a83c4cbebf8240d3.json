@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide67_shape0]]\n那 JMP 呢？\n\n[[BLOCK:slide67_shape1]]\n广义回归（Generalized Regression）仅在 JMP 的专业版（JMP Pro）中可用，免费版中不可用。  \n它功能强大且用户友好。\n\n[[BLOCK:slide68_shape0]]\n优点\n\n[[BLOCK:slide68_shape1]]\nSAS 的广义回归接受所有类型的数据（分类和连续型）。因此，广义回归可以替代普通最小二乘回归（OLS Regression）和逻辑回归模型。  \n它可以解决多重共线性的问题。  \n它可以避免过拟合。  \n与传统回归建模的一次性方法不同，广义回归探索不同的解决方案，其结果是所有可能路径中最优的。"}

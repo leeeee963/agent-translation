@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide27_shape0]]\n弹性网络 (Elastic NET)\n\n[[BLOCK:slide27_shape1]]\n多功能  \n结合了LASSO和岭回归 (Ridge) 方法的惩罚项（L1和L2的加权平均）。  \n为什么不结合两者的优势呢？  \n适用于超高维数据（p > n）。  \n略微增加偏差，但显著降低方差。\n\n[[BLOCK:slide28_shape0]]\n自适应弹性网络\n\n[[BLOCK:slide28_shape1]]\n自适应  \n（Zou和Zhang 2009）  \n当预测变量存在共线性或高度相关时，比LASSO、自适应LASSO和弹性网络 (Elastic NET) 具有更高的预测准确性（SAS Institute 2020）。  \n强烈推荐"}

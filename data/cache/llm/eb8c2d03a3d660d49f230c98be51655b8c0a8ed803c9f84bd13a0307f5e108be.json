@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide47_shape1]]\n• 图表显示了解的路径。  \n• 横轴表示收缩参数。  \n• 随着算法逐步尝试各种替代模型，AICC 的值会越来越小。  \n当 AICC 曲线变平时，这意味着无法再进一步改进（AICC 无法变得更小），因此采用最终解。\n\n[[BLOCK:slide47_shape2]]\n示例：糖尿病数据\n\n[[BLOCK:slide48_shape2]]\n• 基于 AICC 选择的模型是第 6 步的模型。  \n\n• 最佳预测变量是体重指数 (BMI)、血压 (BP)、高密度脂蛋白 (HDL)、低甘油三酯 (LTG) 和葡萄糖 (Glucose)。\n\n[[BLOCK:slide48_shape3]]\n示例：糖尿病数据"}

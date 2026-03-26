@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide21_shape0]]\nDantzig 選擇器\n\n[[BLOCK:slide21_shape1]]\n僅適用於指定分佈為常態，且未選擇無截距選項的情況下。  \n對回歸係數絕對值的總和進行懲罰。\n\n[[BLOCK:slide22_shape0]]\nLASSO\n\n[[BLOCK:slide22_shape1]]\n會將回歸係數歸零 → 通過剔除部分變數來進行變數選擇。  \n不適合寬數據結構：當預測變數過多而觀測值過少（高 p，低 n）時，LASSO 會很快飽和（停止進一步的變數選擇）。  \n當存在過多共線性的預測變數時，LASSO 只會選擇其中一個，忽略其他的。"}

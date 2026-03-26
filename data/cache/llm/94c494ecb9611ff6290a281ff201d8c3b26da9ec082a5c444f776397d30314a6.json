@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide4_shape0]]\n理想状态\n\n[[BLOCK:slide4_shape1]]\n所有预测变量彼此相互独立（正交）\n\n[[BLOCK:slide5_shape0]]\n被高估的解释方差\n\n[[BLOCK:slide5_shape1]]\n可以把 Y 与各个 X 之间的重叠部分理解为被解释的方差（多重相关）。  \n当你不断往模型中加入越来越多的 X 时，Y 这个圆几乎会被完全覆盖。R 平方（R-square）= .89！哇！太厉害了！简直像奇迹一样！"}

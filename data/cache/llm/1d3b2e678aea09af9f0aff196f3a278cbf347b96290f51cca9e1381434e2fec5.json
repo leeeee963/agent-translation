@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide27_shape0]]\n• 分析：Fit Y by X  \n• 过去12个月是否使用过任何烟草：Y  \n• 信仰状态 (Faith status)：X  \n• 由于两个变量均为分类变量，使用卡方分析 (Chi-square analysis)。  \n• p值 (p value) 显著（< .0001），但结果难以解释。  "}

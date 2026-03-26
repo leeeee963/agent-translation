@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide4_shape0]]\n理想情形\n\n[[BLOCK:slide4_shape1]]\n所有预测变量彼此正交\n\n[[BLOCK:slide5_shape0]]\n被夸大的解释方差\n\n[[BLOCK:slide5_shape1]]\n可以把Y与各个X之间的重叠部分想象成被解释的方差（多重关系）。  \n当你不断把更多的X加入到Y中，Y这个圆几乎被完全覆盖。R平方 = .89！哇！太神了！简直可以欢呼了！"}

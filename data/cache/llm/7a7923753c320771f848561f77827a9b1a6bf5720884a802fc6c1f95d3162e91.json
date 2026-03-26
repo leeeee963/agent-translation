@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide26_shape1]]\nCountermeasure against collinearity and variance inflation: Shrinking the regression coefficients towards zero. However, the regression coefficients will not be exactly zero, which may result in retaining all the coefficients or eliminating none. It controls the issue, akin to managing a cancer cell, but does not completely eradicate it."}

@@ -1,0 +1,318 @@
+{
+  "translator": [
+    {
+      "version_id": "translator_v1",
+      "prompt_name": "translator",
+      "content_hash": "1ada35981fa5",
+      "created_at": "2026-03-10T06:07:26.596768+00:00",
+      "scores": {},
+      "notes": "domain=technical, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v2",
+      "prompt_name": "translator",
+      "content_hash": "e3b7940a758e",
+      "created_at": "2026-03-10T07:17:39.038014+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v3",
+      "prompt_name": "translator",
+      "content_hash": "8c8dbe316228",
+      "created_at": "2026-03-10T07:25:03.989822+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v4",
+      "prompt_name": "translator",
+      "content_hash": "23eeef6403b7",
+      "created_at": "2026-03-11T04:10:37.609633+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=vi"
+    },
+    {
+      "version_id": "translator_v5",
+      "prompt_name": "translator",
+      "content_hash": "8c8dbe316228",
+      "created_at": "2026-03-11T04:11:03.759079+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v6",
+      "prompt_name": "translator",
+      "content_hash": "079417930460",
+      "created_at": "2026-03-11T04:22:04.124064+00:00",
+      "scores": {},
+      "notes": "domain=technical, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v7",
+      "prompt_name": "translator",
+      "content_hash": "e758cb130077",
+      "created_at": "2026-03-12T06:03:16.388744+00:00",
+      "scores": {},
+      "notes": "domain=technical, target=mn"
+    },
+    {
+      "version_id": "translator_v8",
+      "prompt_name": "translator",
+      "content_hash": "2471c1338979",
+      "created_at": "2026-03-12T07:44:50.566743+00:00",
+      "scores": {},
+      "notes": "domain=general, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v9",
+      "prompt_name": "translator",
+      "content_hash": "8c8dbe316228",
+      "created_at": "2026-03-12T08:03:55.644263+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v10",
+      "prompt_name": "translator",
+      "content_hash": "10b7321b23fe",
+      "created_at": "2026-03-12T08:19:50.183707+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=mn"
+    },
+    {
+      "version_id": "translator_v11",
+      "prompt_name": "translator",
+      "content_hash": "23eeef6403b7",
+      "created_at": "2026-03-12T08:21:04.609538+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=vi"
+    },
+    {
+      "version_id": "translator_v12",
+      "prompt_name": "translator",
+      "content_hash": "8c8dbe316228",
+      "created_at": "2026-03-12T08:41:56.625927+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v13",
+      "prompt_name": "translator",
+      "content_hash": "14941fb453ae",
+      "created_at": "2026-03-12T08:49:23.424626+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=th"
+    },
+    {
+      "version_id": "translator_v14",
+      "prompt_name": "translator",
+      "content_hash": "23eeef6403b7",
+      "created_at": "2026-03-12T08:52:12.679204+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=vi"
+    },
+    {
+      "version_id": "translator_v15",
+      "prompt_name": "translator",
+      "content_hash": "10b7321b23fe",
+      "created_at": "2026-03-12T08:55:38.367706+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=mn"
+    },
+    {
+      "version_id": "translator_v16",
+      "prompt_name": "translator",
+      "content_hash": "a4a250395e73",
+      "created_at": "2026-03-12T10:39:57.779168+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v17",
+      "prompt_name": "translator",
+      "content_hash": "18ec69044ade",
+      "created_at": "2026-03-12T10:45:00.950130+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=ja"
+    },
+    {
+      "version_id": "translator_v18",
+      "prompt_name": "translator",
+      "content_hash": "def8e4ca2ef8",
+      "created_at": "2026-03-12T10:49:07.127187+00:00",
+      "scores": {},
+      "notes": "domain=technical, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v19",
+      "prompt_name": "translator",
+      "content_hash": "fc4b103c5b66",
+      "created_at": "2026-03-12T11:16:36.789009+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v20",
+      "prompt_name": "translator",
+      "content_hash": "61415af362a2",
+      "created_at": "2026-03-12T11:19:07.693053+00:00",
+      "scores": {},
+      "notes": "domain=technical, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v21",
+      "prompt_name": "translator",
+      "content_hash": "100280f4a33c",
+      "created_at": "2026-03-12T11:19:26.899722+00:00",
+      "scores": {},
+      "notes": "domain=technical, target=ja"
+    },
+    {
+      "version_id": "translator_v22",
+      "prompt_name": "translator",
+      "content_hash": "8e635f935094",
+      "created_at": "2026-03-12T11:23:40.581403+00:00",
+      "scores": {},
+      "notes": "domain=technical, target=mn"
+    },
+    {
+      "version_id": "translator_v23",
+      "prompt_name": "translator",
+      "content_hash": "ae34b2e48cc5",
+      "created_at": "2026-03-12T11:27:59.105052+00:00",
+      "scores": {},
+      "notes": "domain=technical, target=vi"
+    },
+    {
+      "version_id": "translator_v24",
+      "prompt_name": "translator",
+      "content_hash": "99389a6ad31b",
+      "created_at": "2026-03-12T11:32:09.515104+00:00",
+      "scores": {},
+      "notes": "domain=technical, target=id"
+    },
+    {
+      "version_id": "translator_v25",
+      "prompt_name": "translator",
+      "content_hash": "2478491f32be",
+      "created_at": "2026-03-12T11:40:33.499222+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=en"
+    },
+    {
+      "version_id": "translator_v26",
+      "prompt_name": "translator",
+      "content_hash": "61537e670960",
+      "created_at": "2026-03-12T11:41:21.975693+00:00",
+      "scores": {},
+      "notes": "domain=technical, target=en"
+    },
+    {
+      "version_id": "translator_v27",
+      "prompt_name": "translator",
+      "content_hash": "97f499385a5e",
+      "created_at": "2026-03-12T11:48:32.208716+00:00",
+      "scores": {},
+      "notes": "domain=technical, target=mn"
+    },
+    {
+      "version_id": "translator_v28",
+      "prompt_name": "translator",
+      "content_hash": "2478491f32be",
+      "created_at": "2026-03-13T05:40:22.932506+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=zh-CN"
+    },
+    {
+      "version_id": "translator_v29",
+      "prompt_name": "translator",
+      "content_hash": "f31333ea48ab",
+      "created_at": "2026-03-13T05:50:43.821908+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=vi"
+    },
+    {
+      "version_id": "translator_v30",
+      "prompt_name": "translator",
+      "content_hash": "c2a6fe8187ba",
+      "created_at": "2026-03-13T06:01:26.295141+00:00",
+      "scores": {},
+      "notes": "domain=academic, target=th"
+    }
+  ],
+  "translator_unified": [
+    {
+      "version_id": "translator_unified_v1",
+      "prompt_name": "translator_unified",
+      "content_hash": "515618054d82",
+      "created_at": "2026-03-17T03:36:05.225853+00:00",
+      "scores": {},
+      "notes": "target=zh-CN"
+    },
+    {
+      "version_id": "translator_unified_v2",
+      "prompt_name": "translator_unified",
+      "content_hash": "cfe53460bdc8",
+      "created_at": "2026-03-17T13:50:32.775143+00:00",
+      "scores": {},
+      "notes": "target=zh-CN"
+    },
+    {
+      "version_id": "translator_unified_v3",
+      "prompt_name": "translator_unified",
+      "content_hash": "20e7385bd2c4",
+      "created_at": "2026-03-18T04:22:17.690092+00:00",
+      "scores": {},
+      "notes": "target=zh-CN"
+    },
+    {
+      "version_id": "translator_unified_v4",
+      "prompt_name": "translator_unified",
+      "content_hash": "688173f4ceb1",
+      "created_at": "2026-03-20T06:28:20.385978+00:00",
+      "scores": {},
+      "notes": "target=zh-CN"
+    },
+    {
+      "version_id": "translator_unified_v5",
+      "prompt_name": "translator_unified",
+      "content_hash": "b000e0c350a4",
+      "created_at": "2026-03-20T06:46:40.756116+00:00",
+      "scores": {},
+      "notes": "target=zh-CN"
+    },
+    {
+      "version_id": "translator_unified_v6",
+      "prompt_name": "translator_unified",
+      "content_hash": "b150a8e58b5c",
+      "created_at": "2026-03-20T07:07:38.714216+00:00",
+      "scores": {},
+      "notes": "target=zh-CN"
+    },
+    {
+      "version_id": "translator_unified_v7",
+      "prompt_name": "translator_unified",
+      "content_hash": "6dc9e6538059",
+      "created_at": "2026-03-20T07:26:17.397010+00:00",
+      "scores": {},
+      "notes": "target=zh-CN"
+    },
+    {
+      "version_id": "translator_unified_v8",
+      "prompt_name": "translator_unified",
+      "content_hash": "692867e9fbca",
+      "created_at": "2026-03-20T08:39:46.134421+00:00",
+      "scores": {},
+      "notes": "target=zh-CN"
+    },
+    {
+      "version_id": "translator_unified_v9",
+      "prompt_name": "translator_unified",
+      "content_hash": "9a1a2dacf8a9",
+      "created_at": "2026-03-23T04:31:11.931768+00:00",
+      "scores": {},
+      "notes": "target=zh-TW"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide27_shape1]]\nVersatility  \nCombines the penalty terms of LASSO and Ridge Regression (岭回归 (Ridge)) methods (a weighted average of L1 and L2).  \nWhy not leverage the strengths of both?  \nApplicable to ultra-high-dimensional data (p > n).  \nSlightly increases bias but significantly reduces variance."}

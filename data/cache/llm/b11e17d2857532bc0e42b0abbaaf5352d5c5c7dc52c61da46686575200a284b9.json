@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide67_shape0]]\n那麼 JMP 呢？\n\n[[BLOCK:slide67_shape1]]\n廣義回歸功能僅在 JMP 的專業版（JMP Pro）中提供，免費版本無法使用。  \n它功能強大且操作簡便。\n\n[[BLOCK:slide68_shape0]]\n優點\n\n[[BLOCK:slide68_shape1]]\nSAS 的廣義回歸接受所有類型的數據（類別型和連續型）。因此，廣義回歸可以取代最小二乘回歸（OLS Regression）和邏輯回歸模型。  \n它能解決多重共線性問題。  \n它可以避免過度擬合。  \n與傳統回歸建模的一次性方法不同，廣義回歸會探索不同的解決方案，最終結果是所有可能路徑中的最佳方案。"}

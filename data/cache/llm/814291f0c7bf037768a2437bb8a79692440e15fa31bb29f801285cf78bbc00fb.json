@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide34_shape1]]\n贝叶斯信息准则 (Bayesian Information Criterion (BIC)) 施加更高的惩罚。  \n但赤池信息准则 (Akaike’s Information Criterion (AIC)) 和 AICc 优于 BIC。  \nAIC 和 AICc 基于信息增益的原则。  \n贝叶斯方法需要先验输入，但通常存在争议。  \nAIC 在模型选择中以最小平方均误差为准则是渐近最优的，而 BIC 则不是渐近最优的（Burnham & Anderson, 2004; Yang, 2005）。"}

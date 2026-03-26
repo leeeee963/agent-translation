@@ -1,0 +1,24 @@
+# 正式/学术风格
+# 适用：学术论文、政策报告、法律合同、白皮书
+
+name: "正式/学术"
+description: "用词严谨，句式正规，适合论文、报告、法律文件"
+prompt_name: "Formal / Academic"
+prompt_description: "Precise, disciplined, and suitable for academic, policy, legal, and formal writing"
+
+# 自动匹配规则：当文件类型或领域命中时，自动选用此风格
+match:
+  domains: [academic, legal, medical]
+
+guidelines: |
+  - Use formal written language and avoid colloquial phrasing.
+  - Prefer disciplined, objective wording over conversational expressions.
+  - Keep complex sentences logically complete unless the target language strongly prefers a split.
+  - Passive constructions may be preserved when natural in the target language.
+  - Present facts, figures, and claims precisely without decorative embellishment.
+  - Keep terminology consistent across the full document.
+
+avoid:
+  - "colloquial slang or chatty shorthand"
+  - "overly emotional adjectives"
+  - "exclamation-heavy emphasis"

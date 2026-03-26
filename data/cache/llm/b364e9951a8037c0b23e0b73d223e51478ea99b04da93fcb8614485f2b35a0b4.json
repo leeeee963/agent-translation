@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide65_shape1]]\n目前，在SAS和JASP中进行广义回归 (Generalized Regression) 建模似乎比其Python对应工具更为灵活。  \n在SAS和JASP中，用户可以轻松切换LASSO、岭回归 (Ridge) 和弹性网络 (Elastic NET)。  \n但在Python中，用户需要在整个程序中调用特定的选择方法（例如，`from sklearn.linear_model import ElasticNetCV` 或 `from sklearn.linear_model import LassoCV`）。与其只进行一次更改，用户必须将与特定选择方法相关的所有内容替换为另一种方法。"}

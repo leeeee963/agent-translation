@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide2_shape1]]\n· 在 Python 中，数据操作具有一定的自由度  \n· pip install sweetviz  \n· import sweetviz as sV  \n· import pandas as pd  \n· df = pd.read_csv('/Volumes/Extreme SSD/data_science_book/datasets/Chapter6/Diabetes.csv')  \n· my_report = sv.analyze(df)  \n· my_report.show_html()  "}

@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide25_shape1]]\nProposed by Yuan and Lin (2006),  \nthis method is specifically designed for linear models defined by multi-degree-of-freedom effects, such as interaction effects.  \nInstead of adding or removing individual predictors one by one, it includes or excludes a group of regression variables when certain effects interact with others."}

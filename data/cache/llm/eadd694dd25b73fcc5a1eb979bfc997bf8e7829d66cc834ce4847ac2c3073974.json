@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide33_shape1]]\nAICc (hiệu chỉnh) áp dụng một hình phạt lớn hơn cho các tham số bổ sung.  \nAICc = AIC + (2K(K+1)/(n-k-1)) trong đó n = kích thước mẫu và k = số lượng tham số.  \nBurnham & Anderson (2002) khuyến nghị sử dụng AICc, đặc biệt khi n nhỏ và k lớn.  \nAICc hội tụ về AIC khi n ngày càng lớn.  \nAICc nên được sử dụng bất kể giá trị của n và k."}

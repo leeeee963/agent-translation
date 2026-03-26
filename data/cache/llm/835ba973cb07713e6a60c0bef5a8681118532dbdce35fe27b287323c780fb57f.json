@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide47_shape1]]\n•   該圖顯示了解的路徑。  \n•   x軸表示收縮參數。  \n•   校正赤池信息準則 (AICc) 隨著演算法逐步測試各種替代模型而逐漸減小。  \n當 AICc 的曲線變平時，表示無法再進一步改進（AICc 無法再更小），因此採用最終解決方案。\n\n[[BLOCK:slide47_shape2]]\n範例：糖尿病數據\n\n[[BLOCK:slide48_shape2]]\n•   根據校正赤池信息準則 (AICc) 選出的模型是第6步的模型。  \n\n•   最佳的預測變數為 BMI、BP、高密度脂蛋白 (HDL)、LTG 和 Glucose。\n\n[[BLOCK:slide48_shape3]]\n範例：糖尿病數據"}

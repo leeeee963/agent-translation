@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide62_shape0_shape3]]\nJASP\n\n[[BLOCK:slide62_shape2]]\n•  若需导出结果，点击向下箭头即可。随后可以将结果复制并粘贴到 Word 文档中。  \n•  也可以将结果导出为 HTML 或 PDF 文件。  \n\n•  不足之处：JASP 中的正则化线性回归无法直接处理分类变量（如性别），除非先进行虚拟变量编码。\n\n[[BLOCK:slide64_shape0]]\n惩罚回归的优缺点"}

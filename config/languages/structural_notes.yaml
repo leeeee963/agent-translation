@@ -1,0 +1,50 @@
+# Language-specific structural rules for the naturalness review pass.
+# Each entry describes the target language's own grammar characteristics.
+# Rules are language-direction-agnostic: they apply regardless of source language.
+# High-resource languages (zh-cn, zh-tw, ja, ko, fr, de, es, pt, ru) are omitted;
+# the generic review prompt is sufficient for them.
+
+mn:
+  notes: |
+    Mongolian grammar rules to enforce:
+    - Strict SOV order: the main verb must come at the very end of every clause. A verb appearing before its object is a structural error.
+    - Use postpositions (дээр, дор, руу, -аас, -д, -тай, -гүй); there are no prepositions in Mongolian.
+    - Agglutinative case suffixes (тийн ялгал) carry grammatical roles — verify that suffix choice matches the intended role (subject, object, locative, etc.).
+    - Long multi-clause sentences: split into shorter Mongolian clauses, each ending with its own verb form before the next clause begins.
+    - Converb forms (дээр, хооронд, тул, чинь...) connect clauses naturally — prefer them over calqued conjunctions.
+
+th:
+  notes: |
+    Thai grammar rules to enforce:
+    - Classifiers are grammatically required when nouns are counted or specifically referenced: always use the correct classifier (ตัว for animals/objects, คน for people, เล่ม for books, เครื่อง for machines, etc.).
+    - Tense is expressed by time adverbs and aspect markers (แล้ว, กำลัง, จะ, เคย) — do not add extra verbs or auxiliary constructions to signal tense.
+    - Topic-prominent structure: establish the topic first, then make a comment about it.
+    - Thai commonly omits subjects and objects when clear from context — do not force explicit pronouns that a native would drop.
+    - Prefer shorter sentences; heavy nested subordination is unnatural in Thai.
+
+vi:
+  notes: |
+    Vietnamese grammar rules to enforce:
+    - Classifiers before specific nouns are required in context: use the correct classifier (con for animals, cái for inanimate objects, chiếc for paired items, quyển/cuốn for books, etc.).
+    - Serial verb constructions are natural: chain multiple verbs without conjunctions (e.g., đi mua = go buy, ngồi đọc = sit and read).
+    - Topic-comment structure is preferred: state the topic, then comment on it.
+    - Prefer shorter, coordinate clauses over heavy nested subordinate clauses.
+    - Vietnamese is analytic: grammatical relationships are shown by word order and particles, not inflection — do not add inflectional markers.
+
+id:
+  notes: |
+    Indonesian grammar rules to enforce:
+    - Formal and written Indonesian strongly prefers passive voice with the di- prefix for transitive actions performed on a defined object — do not default to active voice.
+    - Indonesian has no articles — do not insert article-like filler words (e.g., avoid using "si" or "sang" where they are not stylistically appropriate).
+    - Use native Indonesian connectors: namun (however), sehingga (so that), karena (because), meskipun (although), sedangkan (whereas) — avoid calqued constructions.
+    - Relative clauses use "yang" followed directly by the verb or adjective; no inversion is needed.
+    - Prefer the me- active prefix only when the agent is the clear focus of the sentence.
+
+kk:
+  notes: |
+    Kazakh grammar rules to enforce:
+    - Strict SOV order: the finite verb must come last in every clause without exception.
+    - Use postpositions (үшін, туралы, бойынша, арқылы, -да/-де, -дан/-ден, -ға/-ге); there are no prepositions in Kazakh.
+    - Agglutinative case suffixes on nouns express grammatical roles — verify that the correct case suffix is used for each noun's role.
+    - Converb forms connect subordinate clauses naturally before the main verb — prefer them over calqued conjunctions.
+    - Subject pronouns are often dropped when the subject is recoverable from verb agreement or context.

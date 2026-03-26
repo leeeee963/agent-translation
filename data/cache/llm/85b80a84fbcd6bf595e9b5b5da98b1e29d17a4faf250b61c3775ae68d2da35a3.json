@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide27_shape0]]\n弹性网络 (Elastic NET)\n\n[[BLOCK:slide27_shape1]]\n灵活多用  \n融合了LASSO回归与岭回归的惩罚机制（L1 与 L2 的加权平均）。  \n既然两者各有优势，何不兼收并蓄？  \n适用于超高维数据（p > n）。  \n虽会带来小幅偏差增加，但能够显著降低方差。\n\n[[BLOCK:slide28_shape0]]\n自适应弹性网络\n\n[[BLOCK:slide28_shape1]]\n自适应方法  \n（Zou 和 Zhang，2009）  \n当预测变量存在共线性或高度相关时，其预测精度优于 LASSO回归、自适应 LASSO回归 以及 弹性网络（SAS Institute，2020）。  \n强烈推荐"}

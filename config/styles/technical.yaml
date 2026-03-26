@@ -1,0 +1,23 @@
+# 技术文档风格
+# 适用：API 文档、技术手册、开发者指南、架构文档
+
+name: "技术文档"
+description: "准确、简洁，技术术语保留，适合 API 文档、技术手册"
+prompt_name: "Technical"
+prompt_description: "Accurate, concise, and suitable for API docs, manuals, and developer guidance"
+
+match:
+  domains: [technical]
+
+guidelines: |
+  - Prioritize precision over flourish and avoid ambiguous wording.
+  - Keep technical terminology consistent and prefer standard industry usage.
+  - Do not translate code, commands, variable names, identifiers, or file paths.
+  - Write steps as direct instructions when the source is procedural.
+  - Let each sentence carry one main idea whenever possible.
+  - Preserve the structure of code blocks and command-line examples.
+
+avoid:
+  - "chatty phrasing"
+  - "unnecessary politeness padding"
+  - "translating code snippets or commands"

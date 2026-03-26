@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide14_shape1]]\n也被称为正则化回归 (Regularized Regression)：旨在减少方差并提高模型的泛化能力，从而避免过拟合。  \n也被称为惩罚回归 (Penalized Regression)：如果模型过于复杂或拟合程度被夸大，则对其施加惩罚 → 保持简单原则 (KISS, Keep it simple, stupid)!"}

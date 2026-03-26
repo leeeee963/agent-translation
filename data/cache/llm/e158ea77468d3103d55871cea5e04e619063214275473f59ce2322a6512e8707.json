@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:p_49]]\n文件格式保留 (File Format Preservation)。系统可直接导入源文件（.docx、.pptx、.srt、.json、.xliff、.idml 等），自动提取其中可翻译内容；在导出时生成与原文件格式完全一致、仅替换为译文的版本。表格不变形，图片不移位，无需手动重新排版，真正实现像素级还原。"}

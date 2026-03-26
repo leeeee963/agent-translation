@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide23_shape0]]\nLASSO\n\n[[BLOCK:slide23_shape1]]\n由于存在偏差问题，可能不具备oracle性质。  \noracle知道真相：即变量的真实子集。  \noracle性质：估计量的渐近分布与最大似然估计量 (MLE) 的渐近分布相同。\n\n[[BLOCK:slide24_shape0]]\nDouble LASSO\n\n[[BLOCK:slide24_shape1]]\n两个阶段  \n阶段1：拟合一个模型以生成阶段2所需的项（预测变量及其斜率估计值）。  \n阶段2：使用阶段1中的项并进行调整。  \n适用于宽数据结构：当样本量小于预测变量的数量时。  \n阶段2不会过度惩罚那些应该包含的项。"}

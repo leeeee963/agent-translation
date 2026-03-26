@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>竖版卡片布局原型 — 并排工作区</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwindcss.config = {
+  theme: {
+    extend: {
+      colors: {
+        border: '#e5e7eb',
+        card: '#ffffff',
+        foreground: '#18181b',
+        background: '#f5f5f5',
+        muted: { DEFAULT: '#f4f4f5', foreground: '#71717a' },
+        accent: { DEFAULT: '#f4f4f5' },
+      }
+    }
+  }
+}
+</script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; }
+  .tag-selected { background: rgba(24,24,27,0.8); color: #fff; }
+  .tag-unselected { background: rgba(244,244,245,0.5); color: #71717a; }
+  .tag-unselected:hover { background: #e4e4e7; }
+
+  /* Sidebar icon active state */
+  .sidebar-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; color: #71717a; }
+  .sidebar-icon:hover { background: #f4f4f5; color: #18181b; }
+  .sidebar-icon.active { background: #18181b; color: #fff; }
+
+  /* Library overlay transition */
+  .library-overlay {
+    position: absolute; inset: 0; z-index: 50;
+    background: #f5f5f5;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .library-overlay.visible { opacity: 1; pointer-events: auto; }
+
+  /* Scrollbar styling */
+  .custom-scroll::-webkit-scrollbar { width: 4px; }
+  .custom-scroll::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 2px; }
+  .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body class="bg-background h-screen overflow-hidden">
+
+<div class="h-screen flex">
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- SIDEBAR                                         -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <aside class="w-14 h-screen flex flex-col items-center justify-between border-r border-border bg-card flex-shrink-0 py-4">
+    <div class="space-y-2">
+      <div class="sidebar-icon active" onclick="showView('main')" title="新建翻译">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      </div>
+      <div class="sidebar-icon" onclick="showView('main')" title="翻译查看">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      </div>
+      <div class="sidebar-icon" onclick="showView('library')" title="术语库">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      </div>
+    </div>
+    <div class="space-y-2">
+      <div class="sidebar-icon" title="主题">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+      </div>
+      <div class="sidebar-icon" title="语言">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/></svg>
+      </div>
+      <div class="sidebar-icon" title="设置">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- WORKSPACE (relative container for overlay)      -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="flex-1 min-w-0 relative">
+
+    <!-- ─── Main View: Create (1/3) + Tasks (2/3) ─── -->
+    <div id="main-view" class="h-screen flex gap-3 p-3">
+
+      <!-- LEFT PANEL: 新建翻译 (~1/3) -->
+      <div class="w-1/3 flex-shrink-0 flex flex-col bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+        <!-- Panel header -->
+        <div class="px-5 pt-4 pb-3 border-b border-border flex-shrink-0">
+          <h2 class="text-sm font-semibold text-foreground">新建翻译</h2>
+        </div>
+
+        <!-- Panel content (scrollable) -->
+        <div class="flex-1 overflow-y-auto custom-scroll px-5 py-4 space-y-4">
+
+          <!-- File Upload -->
+          <div>
+            <div class="text-[11px] font-medium text-muted-foreground mb-2">上传文件</div>
+            <div class="border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center py-10 text-muted-foreground hover:border-foreground/30 hover:bg-accent/30 transition-colors cursor-pointer">
+              <svg class="w-7 h-7 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+              <span class="text-xs">点击上传或拖拽文件</span>
+              <span class="text-[10px] opacity-50 mt-1">DOCX, PPTX, SRT, VTT, MD, JSON...</span>
+            </div>
+          </div>
+
+          <!-- Separator -->
+          <div class="h-px bg-border"></div>
+
+          <!-- Domain Selection -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-medium text-muted-foreground">选择术语域</span>
+              <span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-black tracking-widest bg-foreground text-white leading-none">PRO</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">农林牧渔</button>
+              <button class="tag-selected px-2.5 py-1 rounded-md text-xs transition-colors">商业/营销</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">经济/金融</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">教育</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">能源/环境</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">工程技术</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">通用</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">信息技术</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">法学</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">文学/艺术</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">新闻传媒</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">医药卫生</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">自然科学</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">政治/军事</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">社会科学</button>
+            </div>
+          </div>
+
+          <!-- Separator -->
+          <div class="h-px bg-border"></div>
+
+          <!-- Language Selection -->
+          <div>
+            <div class="text-[11px] font-medium text-muted-foreground mb-2">选择目标语言</div>
+            <div class="flex flex-wrap gap-1.5">
+              <button class="tag-selected px-2.5 py-1 rounded-md text-xs transition-colors">中文（简体）</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">中文（繁体）</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">English</button>
+              <button class="tag-selected px-2.5 py-1 rounded-md text-xs transition-colors">日本語</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">한국어</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">Монгол</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">ไทย</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">Tiếng Việt</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">Bahasa Indonesia</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">Қазақ</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">Français</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">Deutsch</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">Español</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">Português</button>
+              <button class="tag-unselected px-2.5 py-1 rounded-md text-xs transition-colors">Русский</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Start Button (sticky bottom) -->
+        <div class="px-5 py-3 border-t border-border flex-shrink-0">
+          <button class="w-full py-2.5 rounded-lg bg-foreground/80 text-white text-sm font-medium tracking-wide hover:bg-foreground/70 transition-all duration-200 active:scale-[0.99]">
+            开始翻译
+          </button>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL: 翻译查看 (~2/3) -->
+      <div class="flex-1 min-w-0 flex flex-col bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+        <!-- Panel header -->
+        <div class="px-5 pt-4 pb-3 border-b border-border flex-shrink-0 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-foreground">翻译查看</h2>
+          <div class="flex items-center gap-3 text-xs text-muted-foreground">
+            <button class="hover:text-foreground transition-colors flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </button>
+            <button class="hover:text-foreground transition-colors flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+              筛选
+            </button>
+            <button class="hover:text-foreground transition-colors flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+              分组
+            </button>
+          </div>
+        </div>
+
+        <!-- Task list (scrollable) -->
+        <div class="flex-1 overflow-y-auto custom-scroll px-4 py-3 space-y-2">
+
+          <!-- Task item 1 (expanded example) -->
+          <div class="border border-border rounded-xl overflow-hidden">
+            <div class="px-4 py-3 flex items-center justify-between hover:bg-accent/20 transition-colors cursor-pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <svg class="w-4 h-4 text-muted-foreground flex-shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                <span class="text-sm font-medium truncate">Multi-dimensional comparison of AI master's curricula across GGU, HPU, BU, and Stevens.docx</span>
+              </div>
+              <span class="flex items-center gap-1.5 text-xs text-emerald-600 flex-shrink-0 ml-3">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                完成
+              </span>
+            </div>
+            <!-- Expanded content -->
+            <div class="border-t border-border">
+              <!-- Phase: Translation & Review -->
+              <div class="px-4 py-2.5">
+                <div class="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10"/></svg>
+                  <span class="font-medium">翻译 & 审校进度</span>
+                  <span>1 个语言翻译完成</span>
+                </div>
+                <div class="rounded-lg border border-border overflow-hidden">
+                  <div class="flex items-center gap-3 px-3 py-2 text-xs">
+                    <span class="font-medium text-sm w-14 flex-shrink-0">zh-CN</span>
+                    <div class="flex-1"></div>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                      <a href="#" class="inline-flex items-center gap-1 text-[11px] font-medium bg-muted text-foreground px-2 py-0.5 rounded-md hover:bg-muted/80 transition-colors border border-border">
+                        ↓ 翻译稿
+                      </a>
+                      <a href="#" class="inline-flex items-center gap-1 text-[11px] font-medium bg-foreground text-white px-2 py-0.5 rounded-md hover:bg-foreground/90 transition-colors">
+                        ↓ 审校稿
+                      </a>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <span class="cursor-pointer hover:text-foreground transition-colors">审校记录 (24)</span>
+                      <button class="hover:text-foreground transition-colors p-0.5 rounded">↓</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Task item 2 -->
+          <div class="border border-border rounded-xl overflow-hidden">
+            <div class="px-4 py-3 flex items-center justify-between hover:bg-accent/20 transition-colors cursor-pointer">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <svg class="w-4 h-4 text-muted-foreground flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                <span class="text-sm font-medium truncate">DSCI 6200 Week 2 Lecture Slides.pptx</span>
+              </div>
+              <span class="flex items-center gap-1.5 text-xs text-emerald-600 flex-shrink-0 ml-3">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                完成
+              </span>
+            </div>
+          </div>
+
+          <!-- Task item 3 -->
+          <div class="border border-border rounded-xl overflow-hidden">
+            <div class="px-4 py-3 flex items-center justify-between hover:bg-accent/20 transition-colors cursor-pointer">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <svg class="w-4 h-4 text-muted-foreground flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                <span class="text-sm font-medium truncate">PSYM 5000 课程大纲.docx</span>
+              </div>
+              <span class="flex items-center gap-1.5 text-xs text-emerald-600 flex-shrink-0 ml-3">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                完成
+              </span>
+            </div>
+          </div>
+
+          <!-- Task item 4 (in progress) -->
+          <div class="border border-border rounded-xl overflow-hidden">
+            <div class="px-4 py-3 flex items-center justify-between hover:bg-accent/20 transition-colors cursor-pointer">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <svg class="w-4 h-4 text-muted-foreground flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                <span class="text-sm font-medium truncate">Annual Report 2025.docx</span>
+              </div>
+              <span class="flex items-center gap-1.5 text-xs text-blue-600 flex-shrink-0 ml-3">
+                <svg class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                翻译中
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Library Overlay (full workspace) ─── -->
+    <div id="library-overlay" class="library-overlay p-3">
+      <div class="h-full flex flex-col bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+        <!-- Header -->
+        <div class="px-5 pt-4 pb-3 border-b border-border flex-shrink-0 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-foreground">术语库</h2>
+          <button onclick="showView('main')" class="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            关闭
+          </button>
+        </div>
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto custom-scroll p-5">
+          <div class="max-w-4xl mx-auto">
+            <div class="text-muted-foreground text-sm mb-6">管理你的术语库条目</div>
+
+            <!-- Example library table -->
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-border text-left text-xs text-muted-foreground">
+                  <th class="pb-2 font-medium">原文</th>
+                  <th class="pb-2 font-medium">译文</th>
+                  <th class="pb-2 font-medium">领域</th>
+                  <th class="pb-2 font-medium">操作</th>
+                </tr>
+              </thead>
+              <tbody class="text-xs">
+                <tr class="border-b border-border">
+                  <td class="py-2.5">machine learning</td>
+                  <td class="py-2.5">机器学习</td>
+                  <td class="py-2.5"><span class="tag-unselected px-2 py-0.5 rounded text-[10px]">信息技术</span></td>
+                  <td class="py-2.5 text-muted-foreground">编辑 | 删除</td>
+                </tr>
+                <tr class="border-b border-border">
+                  <td class="py-2.5">neural network</td>
+                  <td class="py-2.5">神经网络</td>
+                  <td class="py-2.5"><span class="tag-unselected px-2 py-0.5 rounded text-[10px]">信息技术</span></td>
+                  <td class="py-2.5 text-muted-foreground">编辑 | 删除</td>
+                </tr>
+                <tr class="border-b border-border">
+                  <td class="py-2.5">capstone project</td>
+                  <td class="py-2.5">毕业项目</td>
+                  <td class="py-2.5"><span class="tag-unselected px-2 py-0.5 rounded text-[10px]">教育</span></td>
+                  <td class="py-2.5 text-muted-foreground">编辑 | 删除</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /workspace -->
+
+</div><!-- /root flex -->
+
+<script>
+function showView(view) {
+  const overlay = document.getElementById('library-overlay');
+  const icons = document.querySelectorAll('.sidebar-icon');
+
+  if (view === 'library') {
+    overlay.classList.add('visible');
+    icons.forEach(i => i.classList.remove('active'));
+    icons[2].classList.add('active');
+  } else {
+    overlay.classList.remove('visible');
+    icons.forEach(i => i.classList.remove('active'));
+    icons[0].classList.add('active');
+  }
+}
+</script>
+
+</body>
+</html>

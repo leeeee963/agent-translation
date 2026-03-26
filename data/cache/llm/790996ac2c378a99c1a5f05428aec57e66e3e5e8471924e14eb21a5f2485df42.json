@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide22_shape1]]\nSẽ đưa hệ số hồi quy về 0 → chọn biến bằng cách loại bỏ một số biến.  \nKhông phù hợp với cấu trúc dữ liệu rộng: Nếu có quá nhiều biến dự đoán và quá ít quan sát (p cao, n thấp), LASSO sẽ bão hòa rất nhanh (ngừng việc chọn thêm biến).  \nKhi có quá nhiều biến dự đoán đồng tuyến, LASSO chỉ chọn một biến và bỏ qua các biến khác.  "}

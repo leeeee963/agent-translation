@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide27_shape0]]\n•  分析: Fit Y by X  \n•  過去12か月間でのタバコ使用: Y  \n•  信仰状態 (Faith status): X  \n•  両方の変数がカテゴリカルであるため、カイ二乗分析 (Chi-square analysis) が使用されます。  \n•  p値 (p value) は有意 (< .0001) ですが、結果の解釈は難しいです。  "}

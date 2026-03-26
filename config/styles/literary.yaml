@@ -1,0 +1,20 @@
+# 文学风格
+# 适用：小说、散文、诗歌、文学评论
+
+name: "文学"
+description: "注重文采和韵味，适合小说、散文"
+prompt_name: "Literary"
+prompt_description: "Expressive, atmospheric, and suitable for fiction, essays, and literary prose"
+
+guidelines: |
+  - Pay attention to cadence, atmosphere, and beauty of expression.
+  - Preserve imagery and emotion even when some degree of free rendering is needed.
+  - Recreate rhetorical devices naturally in the target language instead of copying them mechanically.
+  - Maintain narrative pacing and paragraph breathing.
+  - Let dialogue reflect character voice and personality.
+  - Allow controlled creativity, but do not drift away from the meaning.
+
+avoid:
+  - "mechanical literalism"
+  - "needlessly colloquial phrasing unless the source is colloquial"
+  - "sentence breaks that destroy rhythm"

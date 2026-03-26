@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide21_shape0]]\n丹齐格选择器 (Dantzig Selector)\n\n[[BLOCK:slide21_shape1]]\n仅适用于指定分布为正态分布的情况，并且未选择无截距选项。  \n通过惩罚回归系数绝对值之和来实现正则化。\n\n[[BLOCK:slide22_shape0]]\nLASSO\n\n[[BLOCK:slide22_shape1]]\n会将回归系数归零 → 通过剔除部分变量来进行变量选择。  \n不适合宽数据结构：如果预测变量过多而观测值过少（高p，低n），LASSO会很快饱和（停止进一步的变量选择）。  \n当存在过多共线性预测变量时，LASSO只会选择其中一个，忽略其他变量。"}

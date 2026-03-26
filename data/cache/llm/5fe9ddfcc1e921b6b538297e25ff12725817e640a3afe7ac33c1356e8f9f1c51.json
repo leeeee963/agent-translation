@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide70_shape1]]\nGeneralized Regression (广义回归 (Generalized Regression)) remains a global model (i.e., a \"one-size-fits-all\" approach). Unlike hierarchical regression, it cannot uncover local structures or provide tailored solutions for specific population segments.  \nIt is still a linear model. What should be done if the true relationship is nonlinear?"}

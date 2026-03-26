@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide19_shape0]]\n正則化\n\n[[BLOCK:slide19_shape1]]\n最小二乘回歸 (OLS Regression) 與懲罰回歸的主要區別在於，懲罰回歸在損失函數中加入了一個正則化項，以優化係數估計，因此懲罰回歸也被稱為正則化回歸。  \nL1 正則化（LASSO）：將係數估計值的絕對值總和作為正則化項加入。  \nL2 正則化（嶺回歸 (Ridge)）：將係數估計值的平方總和作為正則化項加入。\n\n[[BLOCK:slide20_shape0]]\n模型優化選項\n\n[[BLOCK:slide20_shape1]]\n廣義選擇方法優於傳統方法。"}

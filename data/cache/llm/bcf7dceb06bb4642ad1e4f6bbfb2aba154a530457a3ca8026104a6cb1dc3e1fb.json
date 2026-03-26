@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide19_shape1]]\n普通最小二乘回归 (OLS Regression) 与惩罚回归 (Penalized Regression) 的主要区别在于，惩罚回归在损失函数 (Loss function) 中增加了一个正则化项，以优化系数估计，因此惩罚回归也被称为正则化回归 (Regularized Regression)。  \nL1正则化 (L1 Regularization)（LASSO）：将系数估计值的绝对值之和作为正则化项。  \nL2正则化 (L2 Regularization)（岭回归 (Ridge)）：将系数估计值的平方和作为正则化项。"}

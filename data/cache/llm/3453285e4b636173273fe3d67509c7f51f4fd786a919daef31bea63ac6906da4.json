@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide19_shape0]]\n正则化\n\n[[BLOCK:slide19_shape1]]\n普通最小二乘法（Ordinary Least Squares，作为基准的线性回归方法）与惩罚回归的主要区别在于，惩罚回归会在损失函数中加入正则化项，以改进回归系数的估计效果。因此，惩罚回归也称为正则化回归。\n\nL1 正则化（LASSO 回归）：在模型中加入回归系数绝对值之和作为正则化项。  \nL2 正则化（岭回归）：在模型中加入回归系数平方和作为正则化项。\n\n[[BLOCK:slide20_shape0]]\n模型优化的选项\n\n[[BLOCK:slide20_shape1]]\n广义选择方法通常优于传统方法。"}

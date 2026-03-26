@@ -1,0 +1,147 @@
+poe:
+  api_key: ${POE_API_KEY}
+  base_url: https://api.poe.com/v1
+  timeout: 120
+  max_retries: 3
+  retry_delay: 2
+llm_cache:
+  enabled: true
+  dir: data/cache/llm
+server:
+  max_job_workers: 4
+models:
+  terminology: gpt-5.2-instant
+  translation: gpt-5.2-instant
+  review: gpt-5.2-instant
+  domain_detection: gpt-5.2-instant
+  quality_scoring: gpt-5.2-instant
+translation:
+  max_segment_tokens: 2600
+  max_concurrent_languages_per_job: 5
+  segment_token_limits:
+    default: 2600
+    pptx: 5200
+    docx: 3800
+    doc: 3800
+    srt: 2200
+    vtt: 2200
+    ass: 2200
+    md: 3000
+    json: 2800
+    yaml: 2800
+    yml: 2800
+    po: 2200
+    pot: 2200
+    xliff: 2400
+    xlf: 2400
+    xml: 2800
+    html: 3200
+    htm: 3200
+  context_window_size: 500
+  next_preview_chars: 350
+  max_concurrent_requests: 3
+  max_concurrent_by_file_type:
+    pptx: 2
+    docx: 3
+    doc: 3
+    srt: 3
+    vtt: 3
+    ass: 3
+    md: 3
+    json: 4
+    yaml: 4
+    yml: 4
+    po: 3
+    pot: 3
+    xliff: 3
+    xlf: 3
+    xml: 3
+    html: 3
+    htm: 3
+  json_skip_keys:
+  - url
+  - href
+  - src
+  - id
+  - uuid
+  - guid
+  - key
+  - version
+  - color
+  - colour
+  - type
+  - format
+  - icon
+  - class
+  - style
+  - lang
+  - locale
+  segmenting:
+    slide_cluster_pages: 2
+    subtitle_window_size: 12
+    subtitle_max_gap_seconds: 5.0
+    doc_paragraph_cluster_size: 12
+  temperature:
+    terminology: 0.2
+    translation: 0.5
+    review: 0.3
+    language_detect: 0.1
+  naturalness_review:
+    enabled: true
+    # To restrict to specific languages, uncomment and list codes:
+    # enabled_languages: [mn, th, vi, id, kk]
+supported_languages:
+- code: zh-CN
+  name: 中文（简体）
+- code: zh-TW
+  name: 中文（繁体）
+- code: en
+  name: English
+- code: ja
+  name: 日本語
+- code: ko
+  name: 한국어
+- code: mn
+  name: Монгол
+- code: th
+  name: ไทย
+- code: vi
+  name: Tiếng Việt
+- code: id
+  name: Bahasa Indonesia
+- code: kk
+  name: Қазақ
+- code: fr
+  name: Français
+- code: de
+  name: Deutsch
+- code: es
+  name: Español
+- code: pt
+  name: Português
+- code: ru
+  name: Русский
+terminology_library:
+  db_path: data/terminology.db
+  default_domain: "通用"
+file_processing:
+  max_file_size_mb: 50
+  temp_dir: /tmp/agent_translation
+  supported_extensions:
+  - .pptx
+  - .srt
+  - .vtt
+  - .ass
+  - .docx
+  - .doc
+  - .md
+  - .json
+  - .yaml
+  - .yml
+  - .po
+  - .pot
+  - .xliff
+  - .xlf
+  - .xml
+  - .html
+  - .htm

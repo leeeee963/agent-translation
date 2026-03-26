@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide27_shape0]]\n彈性網絡 (Elastic NET)\n\n[[BLOCK:slide27_shape1]]\n多功能  \n結合了LASSO與嶺回歸 (Ridge) 的懲罰項（L1與L2的加權平均）。  \n為何不選擇兩者的最佳結合？  \n適用於超高維數據（p > n）。  \n略微增加偏差，但顯著降低方差。\n\n[[BLOCK:slide28_shape0]]\n自適應彈性網絡\n\n[[BLOCK:slide28_shape1]]\n自適應  \n（Zou 和 Zhang 2009）  \n當預測變量具有共線性或高度相關時，比LASSO、自適應LASSO和彈性網絡 (Elastic NET) 具有更高的預測準確性（SAS Institute 2020）。  \n強烈推薦"}

@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide14_shape0]]\nKISS！\n\n[[BLOCK:slide14_shape1]]\n也稱為正則化回歸 (Regularized Regression)：目的是減少變異性並提升模型的泛化能力，從而避免過擬合。  \n也稱為懲罰回歸：如果模型過於複雜或擬合度膨脹，則給予懲罰 → 保持簡單，笨蛋 (KISS)！\n\n[[BLOCK:slide15_shape0]]\n損失函數 (Loss function)\n\n[[BLOCK:slide15_shape1]]\n一種將一個或多個變數的事件映射為實數的函數，用於表示該事件的成本。  \n如果在事件中出錯，成本是多少？你會失去什麼？  \n在統計學中，這個成本就是誤差或殘差 (Residual)。"}

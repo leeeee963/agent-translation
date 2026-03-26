@@ -1,0 +1,23 @@
+# 口语化风格
+# 适用：影视字幕、播客字幕、博客文章、社交媒体内容
+
+name: "口语化"
+description: "自然、轻松、贴近日常，适合字幕、博客、社交媒体"
+prompt_name: "Casual"
+prompt_description: "Natural, light, and close to everyday speech for subtitles, blogs, and social content"
+
+match:
+  file_types: [.srt, .vtt, .ass]
+
+guidelines: |
+  - Use everyday spoken language as if a fluent native speaker were saying it naturally.
+  - Keep sentences short, agile, and easy to follow.
+  - Use informal phrasing where appropriate, but keep it clean and readable.
+  - For subtitles, control length tightly and favor rhythm over literal structure.
+  - Preserve humor, irony, warmth, and other emotional color from the original.
+  - Keep dialogue voices distinct when speakers have different personalities.
+
+avoid:
+  - "stiff formal prose"
+  - "awkward passive constructions"
+  - "long, heavy modifier chains"

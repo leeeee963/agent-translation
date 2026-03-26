@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide33_shape1]]\nAICc（修正）对额外参数施加了更大的惩罚。  \nAICc = AIC + (2K(K+1)/(n-k-1))，其中 n = 样本量，k = 参数数量。  \nBurnham & Anderson（2002）建议使用AICc，特别是在n较小且k较大的情况下。  \n随着n逐渐增大，AICc会收敛于AIC。  \n无论n和k的大小，均应使用AICc。"}

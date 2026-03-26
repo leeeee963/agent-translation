@@ -1,0 +1,1 @@
+{"reply": "[[BLOCK:slide23_shape1]]\n可能由于其偏差问题而不具备oracle性质。  \noracle知道真相：即变量的真实子集。oracle性质指的是估计量的渐近分布与最大似然估计量（Maximum Likelihood Estimator, MLE）的渐近分布相同。"}

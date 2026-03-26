@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "agent-translation"
+version = "0.1.0"
+description = "Multi-language translation agent system with terminology management and quality review"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.5",
+    "pydantic-settings>=2.1",
+    "pyyaml>=6.0",
+    "python-pptx>=0.6.23",
+    "pysrt>=1.1.2",
+    "webvtt-py>=0.5",
+    "langdetect>=1.0.9",
+    "rich>=13.7",
+    "click>=8.1",
+    "fastapi>=0.109",
+    "uvicorn[standard]>=0.27",
+    "python-multipart>=0.0.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+]
+
+[project.scripts]
+translate = "src.main:cli"
+
+
+[tool.setuptools.packages.find]
+where = ["."]

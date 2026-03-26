@@ -1,0 +1,11 @@
+1
+00:00:01,000 --> 00:00:04,000
+Xin chào, chào mừng bạn đến với bài thuyết trình của chúng tôi.
+
+2
+00:00:05,000 --> 00:00:08,000
+Hôm nay chúng ta sẽ thảo luận về học máy (Machine Learning) và trí tuệ nhân tạo (Artificial Intelligence).
+
+3
+00:00:09,000 --> 00:00:12,500
+Hãy bắt đầu với những kiến thức cơ bản về học sâu (Deep Learning).

@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>翻译任务卡片 — 多层立体原型</title>
+<style>
+  /* ══ Exact project tokens (from theme.css :root) ══ */
+  :root {
+    --background: #ffffff;
+    --foreground: #0a0a0b;
+    --card: #ffffff;
+    --card-foreground: #0a0a0b;
+    --primary: #030213;
+    --primary-foreground: #ffffff;
+    --muted: #ececf0;
+    --muted-foreground: #717182;
+    --accent: #e9ebef;
+    --accent-foreground: #030213;
+    --destructive: #d4183d;
+    --border: rgba(0, 0, 0, 0.1);
+    --radius: 0.625rem;
+    --radius-sm: calc(0.625rem - 4px);   /* 6px */
+    --radius-md: calc(0.625rem - 2px);   /* 8px */
+    --radius-lg: 0.625rem;               /* 10px */
+  }
+
+  /* ══ Reset & Base ══ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    background: var(--background);
+    color: var(--foreground);
+    padding: 40px 24px;
+    line-height: 1.5;
+    font-size: 16px;
+  }
+
+  /* ══ Page Header — matches project exactly ══ */
+  .page-header {
+    max-width: 960px;
+    margin: 0 auto 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .page-header h3 {
+    font-size: 1rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--foreground);
+    -webkit-text-stroke: 0.4px currentColor;
+  }
+  .page-header .actions { display: flex; gap: 8px; }
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 6px 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--foreground);
+    transition: background .15s, color .15s;
+  }
+  .btn-outline:hover { background: var(--accent); color: var(--accent-foreground); }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--foreground);
+    color: var(--background);
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+
+  /* ══ Badge — matches project Badge component ══ */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .badge-muted   { background: var(--muted); color: var(--muted-foreground); }
+  .badge-accent  { background: var(--accent); color: var(--accent-foreground); }
+  .badge-secondary { background: var(--muted); color: var(--muted-foreground); border-color: var(--border); }
+
+  /* ══ Progress Bar — matches project Progress component ══ */
+  .progress-track {
+    width: 100%;
+    background: rgba(3, 2, 19, 0.12);  /* bg-primary/20 */
+    border-radius: 9999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-track.h2 { height: 8px; }
+  .progress-track.h1\.5 { height: 6px; }
+  .progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 9999px;
+    transition: width .4s ease;
+  }
+
+  /* ══ Section label (demo only) ══ */
+  .section-label {
+    max-width: 960px;
+    margin: 0 auto 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted-foreground);
+    opacity: 0.6;
+  }
+
+  /* ════════════════════════════════════════════════════
+     Layer 0: Job Card (outermost)
+     Matches: bg-card border border-border rounded-lg p-4
+     + enhanced shadow for depth
+  ════════════════════════════════════════════════════ */
+  .task-stack {
+    max-width: 960px;
+    margin: 0 auto 32px;
+  }
+
+  .job-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    transition: box-shadow .2s;
+  }
+  .job-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  /* ── Job Header ── */
+  .job-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .job-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+  .chevron {
+    width: 16px; height: 16px;
+    color: var(--muted-foreground);
+    flex-shrink: 0;
+  }
+  .status-icon {
+    width: 20px; height: 20px;
+    color: var(--muted-foreground);
+    flex-shrink: 0;
+  }
+  .status-icon.active { color: var(--foreground); }
+  .job-meta { min-width: 0; }
+  .job-title {
+    font-size: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .job-subtitle { font-size: 0.875rem; color: var(--muted-foreground); }
+  .job-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* ── Overall Progress ── */
+  .overall-progress {
+    margin-top: 12px;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+    margin-bottom: 4px;
+  }
+  .progress-label .detail { color: var(--muted-foreground); }
+  .progress-label .pct { font-weight: 500; }
+
+  /* ── Collapsible Content Divider ── */
+  .content-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 12px 0 0 0;
+  }
+
+  /* ════════════════════════════════════════════════════
+     Layer 1: Phase Card (术语审核 / 翻译阶段)
+     Nested inside job-card with subtle depth
+  ════════════════════════════════════════════════════ */
+  .inner-layers {
+    padding-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .phase-card {
+    position: relative;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.04),
+      0 2px 8px rgba(0,0,0,0.03);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .phase-card:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 2px 4px rgba(0,0,0,0.06),
+      0 4px 12px rgba(0,0,0,0.04);
+  }
+
+  /* Stack depth: pseudo-elements behind the card */
+  .phase-card.has-depth {
+    z-index: 2;
+  }
+  .phase-card.has-depth::before,
+  .phase-card.has-depth::after {
+    content: '';
+    position: absolute;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    z-index: -1;
+  }
+  .phase-card.has-depth::before {
+    left: 5px; right: 5px; bottom: -4px; height: 6px;
+    background: var(--muted);
+    border: 1px solid var(--border);
+    border-top: none;
+  }
+  .phase-card.has-depth::after {
+    left: 10px; right: 10px; bottom: -7px; height: 5px;
+    background: var(--accent);
+    border: 1px solid var(--border);
+    border-top: none;
+  }
+  .phase-card.has-depth {
+    margin-bottom: 8px;  /* space for pseudo layers */
+  }
+
+  .phase-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .phase-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .phase-icon {
+    width: 20px; height: 20px;
+    color: var(--muted-foreground);
+    flex-shrink: 0;
+  }
+  .phase-title { font-size: 0.875rem; font-weight: 500; }
+  .phase-desc { font-size: 0.75rem; color: var(--muted-foreground); margin-top: 1px; }
+
+  /* ══ Glossary table inside phase card ══ */
+  .glossary-table {
+    margin-top: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    font-size: 0.875rem;
+  }
+  .glossary-table table { width: 100%; border-collapse: collapse; }
+  .glossary-table thead { background: rgba(236, 236, 240, 0.5); }
+  .glossary-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .glossary-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .glossary-table tr:last-child td { border-bottom: none; }
+  .glossary-hint { color: var(--muted-foreground); font-size: 0.75rem; padding: 8px 12px; }
+
+  /* ════════════════════════════════════════════════════
+     Layer 2: Language Run Card (deepest nesting)
+     Matches: border border-border rounded-lg p-3 bg-card
+  ════════════════════════════════════════════════════ */
+  .lang-runs {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .lang-card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 10px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .lang-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+  .lang-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .lang-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .lang-name { font-size: 0.875rem; font-weight: 500; }
+  .lang-detail { font-size: 0.75rem; color: var(--muted-foreground); }
+  .lang-progress { margin-top: 8px; }
+
+  .segment-info {
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+
+  /* ══ Collapsed peek (stacked card illusion when collapsed) ══ */
+  .collapsed-peek {
+    position: relative;
+    height: 10px;
+    margin-top: 4px;
+  }
+  .collapsed-peek .peek {
+    position: absolute;
+    left: 5px; right: 5px;
+    height: 5px;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    background: var(--muted);
+    border: 1px solid var(--border);
+    border-top: none;
+  }
+  .collapsed-peek .peek:nth-child(2) {
+    top: 3px;
+    left: 10px; right: 10px;
+    background: var(--accent);
+  }
+
+  /* ══ Spinner (CSS only) ══ */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .icon-spin { animation: spin 1s linear infinite; }
+
+  /* ══ SVG icon helpers ══ */
+  svg.icon { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
+  svg.icon-lg { width: 20px; height: 20px; }
+  svg.icon-sm { width: 14px; height: 14px; }
+
+  /* ══ Responsive ══ */
+  @media (max-width: 640px) {
+    body { padding: 20px 12px; }
+    .job-card { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ Page Header ═══════════════════ -->
+<div class="page-header">
+  <h3>翻译任务</h3>
+  <div class="actions">
+    <button class="btn-outline">
+      <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+      展开全部
+    </button>
+    <button class="btn-outline">
+      <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/></svg>
+      收起全部
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════ DEMO 1: 展开 — 术语待审核 ═══════════════════ -->
+<div class="section-label">DEMO 1 — 展开·术语待审核</div>
+<div class="task-stack">
+  <div class="job-card">
+
+    <!-- Job Header -->
+    <div class="job-header">
+      <div class="job-header-left">
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        <!-- Loader spinning icon -->
+        <svg class="status-icon active icon-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        <div class="job-meta">
+          <div class="job-title">圆桌访谈GGU两位院长音频整体内容.srt</div>
+          <div class="job-subtitle">1 各语言进度 · 0 已完成</div>
+        </div>
+      </div>
+      <div class="job-header-right">
+        <span class="badge badge-accent">待审核术语 · 24 个术语</span>
+      </div>
+    </div>
+
+    <!-- Overall Progress -->
+    <div class="overall-progress">
+      <div class="progress-label">
+        <span class="detail">术语表待译员确认（24 个候选术语，23 个来自术语库）</span>
+        <span class="pct">20%</span>
+      </div>
+      <div class="progress-track h2">
+        <div class="progress-fill" style="width: 20%"></div>
+      </div>
+    </div>
+
+    <hr class="content-divider">
+
+    <!-- ── Inner Layers ── -->
+    <div class="inner-layers">
+
+      <!-- Phase 1: 术语审核 -->
+      <div class="phase-card has-depth">
+        <div class="phase-header">
+          <div class="phase-header-left">
+            <!-- BookOpen icon -->
+            <svg class="phase-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+            <div>
+              <div class="phase-title">术语表审核</div>
+              <div class="phase-desc">24 个候选术语待确认</div>
+            </div>
+          </div>
+          <span class="badge badge-accent">待审核</span>
+        </div>
+
+        <!-- Glossary table -->
+        <div class="glossary-table">
+          <table>
+            <thead>
+              <tr>
+                <th>原文</th>
+                <th>译文</th>
+                <th>策略</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Golden Gate University</td>
+                <td>金门大学</td>
+                <td><span class="badge badge-secondary">术语库</span></td>
+              </tr>
+              <tr>
+                <td>artificial intelligence</td>
+                <td>人工智能</td>
+                <td><span class="badge badge-secondary">术语库</span></td>
+              </tr>
+              <tr>
+                <td>machine learning</td>
+                <td>机器学习</td>
+                <td><span class="badge badge-secondary">术语库</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="glossary-hint">…还有 21 个术语</div>
+        </div>
+      </div>
+
+      <!-- Phase 2: 各语言翻译 (waiting) -->
+      <div class="phase-card">
+        <div class="phase-header">
+          <div class="phase-header-left">
+            <svg class="phase-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            <div>
+              <div class="phase-title">各语言进度</div>
+              <div class="phase-desc">术语审核完成后开始翻译</div>
+            </div>
+          </div>
+          <span class="badge badge-muted">排队中</span>
+        </div>
+
+        <div class="lang-runs">
+          <div class="lang-card">
+            <div class="lang-header">
+              <div class="lang-header-left">
+                <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <div>
+                  <div class="lang-name">zh-CN</div>
+                  <div class="lang-detail">等待中...</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">排队中</span>
+            </div>
+            <div class="lang-progress">
+              <div class="progress-track h1\.5">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ DEMO 2: 展开 — 翻译进行中 ═══════════════════ -->
+<div class="section-label">DEMO 2 — 展开·翻译进行中（多语言）</div>
+<div class="task-stack">
+  <div class="job-card">
+
+    <div class="job-header">
+      <div class="job-header-left">
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        <svg class="status-icon active icon-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        <div class="job-meta">
+          <div class="job-title">产品介绍视频_2024Q4.srt</div>
+          <div class="job-subtitle">3 各语言进度 · 1 已完成</div>
+        </div>
+      </div>
+      <div class="job-header-right">
+        <span class="badge badge-accent">翻译中</span>
+      </div>
+    </div>
+
+    <div class="overall-progress">
+      <div class="progress-label">
+        <span class="detail">正在翻译…</span>
+        <span class="pct">55%</span>
+      </div>
+      <div class="progress-track h2">
+        <div class="progress-fill" style="width: 55%"></div>
+      </div>
+    </div>
+
+    <hr class="content-divider">
+
+    <div class="inner-layers">
+
+      <!-- Phase 1: Glossary — done, collapsed -->
+      <div class="phase-card" style="opacity: 0.7;">
+        <div class="phase-header">
+          <div class="phase-header-left">
+            <svg class="phase-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+            <div>
+              <div class="phase-title">术语表审核</div>
+              <div class="phase-desc">12 个术语已确认</div>
+            </div>
+          </div>
+          <span class="badge badge-muted">已完成</span>
+        </div>
+      </div>
+
+      <!-- Phase 2: Translation — active with depth -->
+      <div class="phase-card has-depth">
+        <div class="phase-header">
+          <div class="phase-header-left">
+            <svg class="phase-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            <div>
+              <div class="phase-title">各语言进度</div>
+              <div class="phase-desc">3 个目标语言</div>
+            </div>
+          </div>
+          <span class="badge badge-accent">进行中</span>
+        </div>
+
+        <div class="lang-runs">
+          <!-- zh-CN: done -->
+          <div class="lang-card">
+            <div class="lang-header">
+              <div class="lang-header-left">
+                <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <div>
+                  <div class="lang-name">zh-CN 简体中文</div>
+                  <div class="lang-detail">翻译完成 · 128/128 段</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span class="badge badge-muted">已完成</span>
+                <button class="btn-primary">
+                  <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  下载
+                </button>
+              </div>
+            </div>
+            <div class="lang-progress">
+              <div class="progress-track h1\.5">
+                <div class="progress-fill" style="width: 100%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ja: in progress -->
+          <div class="lang-card">
+            <div class="lang-header">
+              <div class="lang-header-left">
+                <svg class="status-icon active icon-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <div>
+                  <div class="lang-name">ja 日本語</div>
+                  <div class="lang-detail">翻译中 #42-45 · 64/128 段</div>
+                </div>
+              </div>
+              <span class="badge badge-accent">翻译中</span>
+            </div>
+            <div class="lang-progress">
+              <div class="progress-track h1\.5">
+                <div class="progress-fill" style="width: 50%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ko: queued -->
+          <div class="lang-card">
+            <div class="lang-header">
+              <div class="lang-header-left">
+                <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <div>
+                  <div class="lang-name">ko 한국어</div>
+                  <div class="lang-detail">等待中...</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">排队中</span>
+            </div>
+            <div class="lang-progress">
+              <div class="progress-track h1\.5">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ DEMO 3: 收起 — 已完成 ═══════════════════ -->
+<div class="section-label">DEMO 3 — 收起·已完成</div>
+<div class="task-stack">
+  <div class="job-card">
+    <div class="job-header">
+      <div class="job-header-left">
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <div class="job-meta">
+          <div class="job-title">企业宣传片_字幕.srt</div>
+          <div class="job-subtitle">2 各语言进度 · 2 已完成</div>
+        </div>
+      </div>
+      <div class="job-header-right">
+        <span class="badge badge-muted">已完成</span>
+        <button class="btn-outline">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          下载全部 (2)
+        </button>
+      </div>
+    </div>
+
+    <div class="overall-progress">
+      <div class="progress-label">
+        <span class="detail">全部翻译已完成</span>
+        <span class="pct">100%</span>
+      </div>
+      <div class="progress-track h2">
+        <div class="progress-fill" style="width: 100%"></div>
+      </div>
+    </div>
+
+    <!-- Collapsed peek: hints at nested layers below -->
+    <div class="collapsed-peek">
+      <div class="peek"></div>
+      <div class="peek"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ DEMO 4: 展开 — 含自然度审校 ═══════════════════ -->
+<div class="section-label">DEMO 4 — 展开·含自然度审校阶段</div>
+<div class="task-stack">
+  <div class="job-card">
+
+    <div class="job-header">
+      <div class="job-header-left">
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        <svg class="status-icon active icon-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        <div class="job-meta">
+          <div class="job-title">技术白皮书_AI芯片架构.srt</div>
+          <div class="job-subtitle">2 各语言进度 · 0 已完成</div>
+        </div>
+      </div>
+      <div class="job-header-right">
+        <span class="badge badge-accent">审校中</span>
+        <span class="badge badge-secondary">8 个术语</span>
+      </div>
+    </div>
+
+    <div class="overall-progress">
+      <div class="progress-label">
+        <span class="detail">自然度审校中…</span>
+        <span class="pct">78%</span>
+      </div>
+      <div class="progress-track h2">
+        <div class="progress-fill" style="width: 78%"></div>
+      </div>
+    </div>
+
+    <hr class="content-divider">
+
+    <div class="inner-layers">
+
+      <!-- Phase 1: Glossary — done -->
+      <div class="phase-card" style="opacity: 0.7;">
+        <div class="phase-header">
+          <div class="phase-header-left">
+            <svg class="phase-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+            <div>
+              <div class="phase-title">术语表审核</div>
+              <div class="phase-desc">8 个术语已确认</div>
+            </div>
+          </div>
+          <span class="badge badge-muted">已完成</span>
+        </div>
+      </div>
+
+      <!-- Phase 2: Translation — done -->
+      <div class="phase-card" style="opacity: 0.7;">
+        <div class="phase-header">
+          <div class="phase-header-left">
+            <svg class="phase-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            <div>
+              <div class="phase-title">初译</div>
+              <div class="phase-desc">2 个语言翻译完成</div>
+            </div>
+          </div>
+          <span class="badge badge-muted">已完成</span>
+        </div>
+      </div>
+
+      <!-- Phase 3: Review — active -->
+      <div class="phase-card has-depth">
+        <div class="phase-header">
+          <div class="phase-header-left">
+            <svg class="phase-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <div>
+              <div class="phase-title">自然度审校</div>
+              <div class="phase-desc">优化译文流畅度和表达</div>
+            </div>
+          </div>
+          <span class="badge badge-accent">进行中</span>
+        </div>
+
+        <div class="lang-runs">
+          <div class="lang-card">
+            <div class="lang-header">
+              <div class="lang-header-left">
+                <svg class="status-icon active icon-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <div>
+                  <div class="lang-name">zh-CN 简体中文</div>
+                  <div class="lang-detail">审校中 #86-90 · 已修改 12 处</div>
+                </div>
+              </div>
+              <span class="badge badge-accent">审校中</span>
+            </div>
+            <div class="lang-progress">
+              <div class="progress-track h1\.5">
+                <div class="progress-fill" style="width: 68%"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lang-card">
+            <div class="lang-header">
+              <div class="lang-header-left">
+                <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <div>
+                  <div class="lang-name">ja 日本語</div>
+                  <div class="lang-detail">等待审校...</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">排队中</span>
+            </div>
+            <div class="lang-progress">
+              <div class="progress-track h1\.5">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
