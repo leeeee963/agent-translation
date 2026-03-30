@@ -6,7 +6,9 @@ from pathlib import Path
 
 import yaml
 
-_NOTES_PATH = Path(__file__).resolve().parents[2] / "config" / "languages" / "structural_notes.yaml"
+from src.utils.paths import get_config_dir
+
+_NOTES_PATH = get_config_dir() / "languages" / "structural_notes.yaml"
 
 _cache: dict[str, str] | None = None
 

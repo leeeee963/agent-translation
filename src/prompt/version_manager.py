@@ -12,7 +12,9 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-_STORE_PATH = Path(__file__).resolve().parents[2] / "data" / "prompt_versions.json"
+from src.utils.paths import get_data_dir
+
+_STORE_PATH = get_data_dir() / "data" / "prompt_versions.json"
 
 
 class PromptVersion(BaseModel):

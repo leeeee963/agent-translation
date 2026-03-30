@@ -7,6 +7,24 @@ import type { Language } from "../types/translation";
 import { fetchLanguages } from "../api";
 import { useLanguage } from "../contexts/LanguageContext";
 
+const LANG_NAMES: Record<string, { zh: string; en: string }> = {
+  "zh-CN": { zh: "简体中文", en: "Chinese (Simplified)" },
+  "zh-TW": { zh: "繁体中文", en: "Chinese (Traditional)" },
+  en: { zh: "英文", en: "English" },
+  ja: { zh: "日文", en: "Japanese" },
+  ko: { zh: "韩文", en: "Korean" },
+  mn: { zh: "蒙古文", en: "Mongolian" },
+  th: { zh: "泰文", en: "Thai" },
+  vi: { zh: "越南文", en: "Vietnamese" },
+  id: { zh: "印尼文", en: "Indonesian" },
+  kk: { zh: "哈萨克文", en: "Kazakh" },
+  fr: { zh: "法文", en: "French" },
+  de: { zh: "德文", en: "German" },
+  es: { zh: "西班牙文", en: "Spanish" },
+  pt: { zh: "葡萄牙文", en: "Portuguese" },
+  ru: { zh: "俄文", en: "Russian" },
+};
+
 interface LanguageSelectorProps {
   selectedLanguages: Language[];
   onLanguagesChange: (languages: Language[]) => void;
@@ -14,7 +32,9 @@ interface LanguageSelectorProps {
 }
 
 export function LanguageSelector({ selectedLanguages, onLanguagesChange, variant = "compact" }: LanguageSelectorProps) {
-  const { t } = useLanguage();
+  const { t, language: uiLang } = useLanguage();
+  const displayName = (lang: Language) =>
+    LANG_NAMES[lang.code]?.[uiLang] || lang.name;
   const [searchQuery, setSearchQuery] = useState("");
   const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,9 +48,12 @@ export function LanguageSelector({ selectedLanguages, onLanguagesChange, variant
   }, []);
 
   const filteredLanguages = availableLanguages.filter(
-    (lang) =>
-      lang.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lang.code.toLowerCase().includes(searchQuery.toLowerCase())
+    (lang) => {
+      const q = searchQuery.toLowerCase();
+      return displayName(lang).toLowerCase().includes(q) ||
+        lang.name.toLowerCase().includes(q) ||
+        lang.code.toLowerCase().includes(q);
+    }
   );
 
   const isSelected = (lang: Language) =>
@@ -52,14 +75,14 @@ export function LanguageSelector({ selectedLanguages, onLanguagesChange, variant
   if (variant === "inline") {
     return (
       <div>
-        <h3 className="text-[11px] font-medium text-muted-foreground mb-2">
+        <h3 className="text-xs font-medium text-muted-foreground mb-3">
           {t("lang.title")}
         </h3>
         {loading ? (
           <div className="text-center py-2 text-muted-foreground text-xs">Loading...</div>
         ) : (
           <div className="flex flex-wrap gap-1.5">
-            {availableLanguages.map((lang) => {
+            {[...availableLanguages].sort((a, b) => displayName(a).length - displayName(b).length).map((lang) => {
               const selected = isSelected(lang);
               return (
                 <button
@@ -68,10 +91,10 @@ export function LanguageSelector({ selectedLanguages, onLanguagesChange, variant
                   className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
                     selected
                       ? "bg-foreground/80 text-background"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                      : "bg-card text-muted-foreground hover:bg-card/80"
                   }`}
                 >
-                  {lang.name}
+                  {displayName(lang)}
                 </button>
               );
             })}
@@ -84,7 +107,7 @@ export function LanguageSelector({ selectedLanguages, onLanguagesChange, variant
   // ── Compact variant (default): tags + popover ──
   return (
     <div>
-      <h3 className="text-[11px] font-medium text-muted-foreground mb-1.5">
+      <h3 className="text-xs font-medium text-muted-foreground mb-1.5">
         {t("lang.title")}
       </h3>
 
@@ -143,9 +166,9 @@ export function LanguageSelector({ selectedLanguages, onLanguagesChange, variant
                         <div className="flex items-center gap-2">
                           {selected && <Check className="size-3 flex-shrink-0" />}
                           {!selected && <span className="w-3" />}
-                          <span>{lang.name}</span>
+                          <span>{displayName(lang)}</span>
                         </div>
-                        <span className="text-[10px] text-muted-foreground uppercase">
+                        <span className="text-xs text-muted-foreground uppercase">
                           {lang.code}
                         </span>
                       </button>

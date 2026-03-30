@@ -1,0 +1,73 @@
+name: Build Desktop Apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller pywebview
+
+      - name: Build frontend
+        run: cd frontend && npm install && npm run build
+
+      - name: Build macOS app
+        run: pyinstaller scripts/build_macos.spec --clean --noconfirm
+
+      - name: Zip app bundle
+        run: cd dist && zip -r ../AgentTranslation-Mac.zip AgentTranslation.app
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AgentTranslation-Mac
+          path: AgentTranslation-Mac.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller pywebview
+
+      - name: Build frontend
+        run: cd frontend && npm install && npm run build
+
+      - name: Build Windows exe
+        run: pyinstaller scripts/build_windows.spec --clean --noconfirm
+
+      - name: Zip Windows build
+        run: Compress-Archive -Path dist/AgentTranslation -DestinationPath AgentTranslation-Windows.zip
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AgentTranslation-Windows
+          path: AgentTranslation-Windows.zip

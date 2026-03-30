@@ -9,6 +9,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from src.models.task import TaskStatus as S
 from src.queue.job_db import JobDB
 
 logger = logging.getLogger(__name__)
@@ -61,8 +62,8 @@ class JobQueue:
             "source_language": "",
             "use_glossary": use_glossary,
             "library_domain_ids": library_domain_ids or [],
-            "status": "queued",
-            "stage": "queued",
+            "status": S.QUEUED,
+            "stage": S.QUEUED,
             "detail": "等待中...",
             "percent": 0,
             "segments_done": 0,
@@ -80,8 +81,8 @@ class JobQueue:
             "language_runs": [
                 {
                     "target_language": target_language,
-                    "status": "queued",
-                    "stage": "queued",
+                    "status": S.QUEUED,
+                    "stage": S.QUEUED,
                     "detail": "等待中...",
                     "percent": 0,
                     "segments_done": 0,
@@ -141,20 +142,42 @@ class JobQueue:
                 db_job.setdefault("source_file", "")
                 result.append(db_job)
 
-        # Sort by created_at descending (newest first), with None last
-        result.sort(key=lambda j: j.get("created_at") or "", reverse=True)
+        # Sort by created_at descending (newest first); fallback to started_at/completed_at
+        result.sort(
+            key=lambda j: j.get("created_at") or j.get("started_at") or j.get("completed_at") or "",
+            reverse=True,
+        )
         return result
 
     async def cancel(self, job_id: str) -> bool:
         job = self._jobs.get(job_id)
-        if job and job["status"] in ("queued", "awaiting_glossary_review"):
-            job.update({"status": "cancelled", "stage": "cancelled", "detail": "已取消"})
+        if job and job["status"] in (S.QUEUED, S.AWAITING_GLOSSARY_REVIEW):
+            job.update({"status": S.CANCELLED, "stage": S.CANCELLED, "detail": "已取消"})
             # Clean up phase 1 store if waiting for review
             self._phase1_store.pop(job_id, None)
             self._glossaries.pop(job_id, None)
             self._persist_final(job_id)
             return True
         return False
+
+    def delete(self, job_id: str) -> bool:
+        """Permanently delete a job from memory and database."""
+        self._jobs.pop(job_id, None)
+        self._phase1_store.pop(job_id, None)
+        self._glossaries.pop(job_id, None)
+        # Clean up output files
+        for key in [k for k in self._outputs if k.startswith(f"{job_id}/") or k == f"_dir_{job_id}"]:
+            self._outputs.pop(key, None)
+        self._db.delete_job(job_id)
+        return True
+
+    def delete_batch(self, job_ids: list[str]) -> int:
+        """Delete multiple jobs. Returns count of deleted."""
+        count = 0
+        for job_id in job_ids:
+            if self.delete(job_id):
+                count += 1
+        return count
 
     def update_glossary_term(
         self,
@@ -191,7 +214,7 @@ class JobQueue:
         from src.utils.glossary_export import build_glossary_exports
 
         job = self._jobs.get(job_id)
-        if not job or job.get("status") != "awaiting_glossary_review":
+        if not job or job.get("status") != S.AWAITING_GLOSSARY_REVIEW:
             return False
 
         phase1_data = self._phase1_store.get(job_id)
@@ -245,7 +268,7 @@ class JobQueue:
         Returns True if phase 2 was queued, False if job not found/wrong state.
         """
         job = self._jobs.get(job_id)
-        if not job or job.get("status") != "awaiting_glossary_review":
+        if not job or job.get("status") != S.AWAITING_GLOSSARY_REVIEW:
             return False
 
         glossary = self._glossaries.get(job_id)
@@ -287,8 +310,8 @@ class JobQueue:
 
         # Update job dict to reflect confirmation
         job.update({
-            "status": "queued",
-            "stage": "queued",
+            "status": S.QUEUED,
+            "stage": S.QUEUED,
             "detail": "术语已确认，等待翻译...",
         })
 
@@ -315,28 +338,6 @@ class JobQueue:
     def outputs(self) -> dict[str, Path]:
         return self._outputs
 
-    def get_status_compat(self, task_id: str) -> dict | None:
-        job = self._jobs.get(task_id)
-        if not job:
-            return None
-
-        out: dict = {
-            "status": job["status"] if job["status"] in ("done", "error") else "running",
-            "step": job["stage"],
-            "detail": job["detail"],
-            "percent": job.get("percent", 0),
-            "eta_seconds": 0,
-        }
-
-        glossary_rows = (job.get("glossary_exports") or {}).get("rows") or []
-        if glossary_rows and job["status"] not in ("done", "error"):
-            out["partial_result"] = {"glossary": glossary_rows[:20]}
-        if job.get("result"):
-            out["result"] = job["result"]
-        if job.get("error"):
-            out["error"] = job["error"]
-        return out
-
     async def _ensure_workers(self) -> None:
         async with self._get_lock():
             while self._active < self._max_workers and not self._get_queue().empty():
@@ -351,7 +352,7 @@ class JobQueue:
                 except asyncio.QueueEmpty:
                     break
                 job = self._jobs.get(item["job_id"])
-                if not job or job["status"] == "cancelled":
+                if not job or job["status"] == S.CANCELLED:
                     continue
                 if item.get("phase") == 2:
                     await self._execute_phase2(item, job)
@@ -373,8 +374,8 @@ class JobQueue:
         use_glossary: bool = item.get("use_glossary", True)
         library_domain_ids: list[int] = item.get("library_domain_ids", [])
 
-        job.update({"status": "parsing", "stage": "parsing", "detail": "解析文件中...", "started_at": job.get("started_at") or JobDB.now_iso()})
-        self._db.update_job(job_id, status="parsing", started_at=job["started_at"])
+        job.update({"status": S.PARSING, "stage": S.PARSING, "detail": "解析文件中...", "started_at": job.get("started_at") or JobDB.now_iso()})
+        self._db.update_job(job_id, status=S.PARSING, started_at=job["started_at"])
 
         # Preserve timestamps across progress callbacks
         timestamps = {
@@ -407,7 +408,7 @@ class JobQueue:
                     library_domain_ids=library_domain_ids or None,
                 )
 
-                if translation_job.status.value == "error":
+                if translation_job.status == S.ERROR:
                     finalized = translation_job.model_dump(mode="json")
                     finalized["job_id"] = job_id
                     finalized["filename"] = job.get("filename", "")
@@ -420,7 +421,7 @@ class JobQueue:
                     shutil.rmtree(work_dir, ignore_errors=True)
                     return
 
-                if translation_job.status.value == "done":
+                if translation_job.status == S.DONE:
                     # No translatable content — done in phase 1
                     finalized = translation_job.model_dump(mode="json")
                     finalized["job_id"] = job_id
@@ -476,8 +477,8 @@ class JobQueue:
                 self._jobs[job_id] = finalized
                 self._persist_final(job_id)
 
-                succeeded = [run for run in finalized["language_runs"] if run["status"] == "done"]
-                if not succeeded and finalized["status"] == "error":
+                succeeded = [run for run in finalized["language_runs"] if run["status"] == S.DONE]
+                if not succeeded and finalized["status"] == S.ERROR:
                     shutil.rmtree(work_dir, ignore_errors=True)
                 else:
                     self._outputs[f"_dir_{job_id}"] = work_dir
@@ -485,7 +486,7 @@ class JobQueue:
         except Exception as exc:
             logger.exception("Job %s failed: %s", job_id, exc)
             shutil.rmtree(work_dir, ignore_errors=True)
-            job.update({"status": "error", "stage": "error", "detail": str(exc), "error": str(exc)})
+            job.update({"status": S.ERROR, "stage": S.ERROR, "detail": str(exc), "error": str(exc)})
             job.update(timestamps)
             self._persist_final(job_id)
 
@@ -504,7 +505,7 @@ class JobQueue:
 
         phase1_data = self._phase1_store.pop(job_id, None)
         if not phase1_data:
-            job.update({"status": "error", "stage": "error", "detail": "Phase 1 data missing", "error": "Phase 1 data missing"})
+            job.update({"status": S.ERROR, "stage": S.ERROR, "detail": "Phase 1 data missing", "error": "Phase 1 data missing"})
             job.update(timestamps)
             self._persist_final(job_id)
             return
@@ -517,7 +518,7 @@ class JobQueue:
         if job_id in self._glossaries:
             translation_job.glossary = self._glossaries[job_id]
 
-        job.update({"status": "translating", "stage": "translating", "detail": "译员已确认术语，开始翻译..."})
+        job.update({"status": S.TRANSLATING, "stage": S.TRANSLATING, "detail": "译员已确认术语，开始翻译..."})
 
         def on_progress(snapshot) -> None:
             payload = snapshot.model_dump(mode="json")
@@ -551,8 +552,8 @@ class JobQueue:
             self._jobs[job_id] = finalized
             self._persist_final(job_id)
 
-            succeeded = [run for run in finalized["language_runs"] if run["status"] == "done"]
-            if not succeeded and finalized["status"] == "error":
+            succeeded = [run for run in finalized["language_runs"] if run["status"] == S.DONE]
+            if not succeeded and finalized["status"] == S.ERROR:
                 shutil.rmtree(work_dir, ignore_errors=True)
             else:
                 self._outputs[f"_dir_{job_id}"] = work_dir
@@ -560,7 +561,7 @@ class JobQueue:
         except Exception as exc:
             logger.exception("Phase 2 for job %s failed: %s", job_id, exc)
             shutil.rmtree(work_dir, ignore_errors=True)
-            job.update({"status": "error", "stage": "error", "detail": str(exc), "error": str(exc)})
+            job.update({"status": S.ERROR, "stage": S.ERROR, "detail": str(exc), "error": str(exc)})
             job.update(timestamps)
             self._persist_final(job_id)
 
@@ -570,7 +571,7 @@ class JobQueue:
     def _attach_downloads(self, job_id: str, payload: dict) -> None:
         for run in payload.get("language_runs", []):
             output_file = run.get("output_file")
-            if run.get("status") != "done" or not output_file:
+            if run.get("status") != S.DONE or not output_file:
                 continue
             path = Path(output_file)
             if not path.exists():
@@ -590,7 +591,7 @@ class JobQueue:
     def _build_legacy_result(self, job_id: str, payload: dict) -> dict:
         outputs: list[dict] = []
         for run in payload.get("language_runs", []):
-            if run.get("status") != "done" or not run.get("output_file"):
+            if run.get("status") != S.DONE or not run.get("output_file"):
                 continue
             filename = Path(run["output_file"]).name
             outputs.append(

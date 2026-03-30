@@ -11,7 +11,9 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "jobs.db"
+from src.utils.paths import get_data_dir
+
+_DEFAULT_DB_PATH = get_data_dir() / "data" / "jobs.db"
 
 
 class JobDB:
@@ -48,9 +50,22 @@ class JobDB:
                         result          TEXT,
                         created_at      TEXT,
                         started_at      TEXT,
-                        completed_at    TEXT
+                        completed_at    TEXT,
+                        glossary_data   TEXT,
+                        glossary_exports TEXT,
+                        language_runs   TEXT
                     );
                 """)
+                # Migration: add columns to existing tables
+                for col, default in [
+                    ("glossary_data", None),
+                    ("glossary_exports", None),
+                    ("language_runs", None),
+                ]:
+                    try:
+                        conn.execute(f"ALTER TABLE jobs ADD COLUMN {col} TEXT")
+                    except sqlite3.OperationalError:
+                        pass  # column already exists
                 conn.commit()
             finally:
                 conn.close()
@@ -68,8 +83,9 @@ class JobDB:
                     """INSERT OR REPLACE INTO jobs
                        (job_id, filename, source_language, target_languages,
                         use_glossary, status, stage, detail, percent,
-                        error, result, created_at, started_at, completed_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        error, result, created_at, started_at, completed_at,
+                        glossary_data, glossary_exports, language_runs)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         job.get("job_id"),
                         job.get("filename", ""),
@@ -85,6 +101,9 @@ class JobDB:
                         job.get("created_at"),
                         job.get("started_at"),
                         job.get("completed_at"),
+                        json.dumps(job.get("glossary"), ensure_ascii=False) if job.get("glossary") else None,
+                        json.dumps(job.get("glossary_exports"), ensure_ascii=False) if job.get("glossary_exports") else None,
+                        json.dumps(job.get("language_runs"), ensure_ascii=False) if job.get("language_runs") else None,
                     ),
                 )
                 conn.commit()
@@ -135,6 +154,17 @@ class JobDB:
             except (json.JSONDecodeError, TypeError):
                 job["result"] = None
             job["use_glossary"] = bool(job.get("use_glossary"))
+            # Deserialize glossary/language_runs from DB columns
+            for db_col, key, default in [
+                ("glossary_data", "glossary", None),
+                ("glossary_exports", "glossary_exports", {}),
+                ("language_runs", "language_runs", []),
+            ]:
+                raw = job.pop(db_col, None) if db_col != key else job.get(key)
+                try:
+                    job[key] = json.loads(raw) if raw else default
+                except (json.JSONDecodeError, TypeError):
+                    job[key] = default
             result.append(job)
         return result
 

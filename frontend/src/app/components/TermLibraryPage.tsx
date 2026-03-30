@@ -52,6 +52,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 import { useLanguage } from "../contexts/LanguageContext";
+import { downloadFile } from "../utils/download";
 
 const PAGE_SIZE = 50;
 
@@ -387,14 +388,14 @@ export function TermLibraryContent() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem asChild>
-                            <a href={getExportUrl(selectedDomain.id, "csv")} download>CSV</a>
+                          <DropdownMenuItem onClick={() => downloadFile(getExportUrl(selectedDomain.id, "csv"))}>
+                            CSV
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <a href={getExportUrl(selectedDomain.id, "tsv")} download>TSV</a>
+                          <DropdownMenuItem onClick={() => downloadFile(getExportUrl(selectedDomain.id, "tsv"))}>
+                            TSV
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <a href={getExportUrl(selectedDomain.id, "json")} download>JSON</a>
+                          <DropdownMenuItem onClick={() => downloadFile(getExportUrl(selectedDomain.id, "json"))}>
+                            JSON
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

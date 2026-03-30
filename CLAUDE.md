@@ -15,7 +15,7 @@
 
 ## How to Run
 
-- **Full app:** `./run_server.sh` (installs deps, builds frontend, starts server on port 8000)
+- **Full app:** `scripts/run_server.sh` (installs deps, builds frontend, starts server on port 8000)
 - **Backend only:** `python -m uvicorn src.server:app --reload --port 8000`
 - **Frontend dev:** `cd frontend && npm run dev` (proxies API to localhost:8000)
 - **Tests:** `pytest` (test framework configured but tests/ is currently empty)
@@ -24,12 +24,14 @@
 
 - Translation quality and naturalness is a top priority for this project.
 - When modifying translation prompts, preserve the user's creative framework and intent — do not over-engineer or rewrite from scratch unless explicitly asked.
-- Prompt templates live in `src/prompt/`. Style definitions live in `config/styles/`.
+- Prompt templates live in `config/prompts/`. Style definitions live in `config/styles/`.
 
 ## Project Structure
 
 - `src/` — Python backend (FastAPI server, translation engine, parsers, terminology)
 - `frontend/` — React/TypeScript web UI
-- `config/` — settings.yaml and translation style definitions
-- `data/` — samples, cache, terminology.db
-- `glossaries/` — terminology library files
+- `config/` — settings.yaml, prompt templates, and translation style definitions
+- `data/` — runtime data (databases, cache, samples)
+- `scripts/` — build scripts, packaging configs, and server launcher
+- `docs/` — documentation and prototypes
+- `tests/` — test suite

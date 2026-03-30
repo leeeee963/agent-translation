@@ -21,7 +21,9 @@ from src.utils.language_loader import get_structural_notes
 
 logger = logging.getLogger(__name__)
 
-_CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
+from src.utils.paths import get_config_dir
+
+_CONFIG_DIR = get_config_dir()
 _PROMPT_PATH = _CONFIG_DIR / "prompts" / "translator_unified.md"
 _REVIEW_PROMPT_PATH = _CONFIG_DIR / "prompts" / "naturalness_review.md"
 _SETTINGS_PATH = _CONFIG_DIR / "settings.yaml"

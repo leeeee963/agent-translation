@@ -16,7 +16,9 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "terminology.db"
+from src.utils.paths import get_data_dir
+
+_DEFAULT_DB_PATH = get_data_dir() / "data" / "terminology.db"
 
 
 class TermLibraryDB:
@@ -105,61 +107,9 @@ class TermLibraryDB:
         ("general",              "General",                "通用",       "General-purpose terms not specific to any domain", "通用术语，不限定特定领域"),
     ]
 
-    # Map legacy names (old Chinese-only or old bilingual) to the new stable key
-    _LEGACY_NAME_MAP: dict[str, str] = {
-        "经济/金融": "economics_finance",
-        "法学": "law",
-        "医药卫生": "medical",
-        "信息技术": "information_technology",
-        "工程技术": "engineering",
-        "自然科学": "natural_science",
-        "农林牧渔": "agriculture",
-        "能源/环境": "energy_environment",
-        "教育": "education",
-        "政治/军事": "politics_military",
-        "社会科学": "social_science",
-        "文学/艺术": "literature_arts",
-        "新闻传媒": "media_communication",
-        "商业/营销": "business",
-        "通用": "general",
-        # Also handle the intermediate bilingual names
-        "Economics / Finance · 经济/金融": "economics_finance",
-        "Law · 法学": "law",
-        "Medical · 医药卫生": "medical",
-        "Information Technology · 信息技术": "information_technology",
-        "Engineering · 工程技术": "engineering",
-        "Natural Science · 自然科学": "natural_science",
-        "Agriculture · 农林牧渔": "agriculture",
-        "Energy / Environment · 能源/环境": "energy_environment",
-        "Education · 教育": "education",
-        "Politics / Military · 政治/军事": "politics_military",
-        "Social Science · 社会科学": "social_science",
-        "Literature / Arts · 文学/艺术": "literature_arts",
-        "Media / Communication · 新闻传媒": "media_communication",
-        "Business · 商业/营销": "business",
-        "General · 通用": "general",
-    }
-
     @classmethod
     def _seed_default_domains(cls, conn: sqlite3.Connection) -> None:
-        """Ensure all 15 default domains exist. Migrates legacy names to stable keys."""
-        existing = {
-            row[0]: row[1]
-            for row in conn.execute("SELECT name, id FROM domains").fetchall()
-        }
-
-        # Build lookup: key → (name_en, name_zh, desc_en, desc_zh)
-        defaults = {key: (en, zh, desc_en, desc_zh) for key, en, zh, desc_en, desc_zh in cls._DEFAULT_DOMAINS}
-
-        # Migrate legacy names to stable keys
-        for old_name, new_key in cls._LEGACY_NAME_MAP.items():
-            if old_name in existing and new_key not in existing:
-                en, zh, desc_en, desc_zh = defaults[new_key]
-                conn.execute(
-                    "UPDATE domains SET name = ?, name_en = ?, name_zh = ?, description = ?, description_zh = ? WHERE name = ?",
-                    (new_key, en, zh, desc_en, desc_zh, old_name),
-                )
-
+        """Ensure all 15 default domains exist."""
         # Insert any missing default domains
         for key, name_en, name_zh, desc_en, desc_zh in cls._DEFAULT_DOMAINS:
             conn.execute(

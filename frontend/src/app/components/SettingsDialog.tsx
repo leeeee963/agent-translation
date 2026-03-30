@@ -223,11 +223,6 @@ export function SettingsDialog({
                   )}
                 </button>
               </div>
-              {maskedKey && !apiKey && (
-                <p className="text-xs text-muted-foreground">
-                  {maskedKey}
-                </p>
-              )}
             </div>
 
             {/* Base URL */}

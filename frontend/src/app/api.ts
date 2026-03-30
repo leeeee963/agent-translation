@@ -47,7 +47,6 @@ export async function submitJobs(
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));
   formData.append("target_languages", targetLanguages.join(","));
-  formData.append("style", "");
   formData.append("use_glossary", useGlossary ? "true" : "false");
   if (libraryDomainIds.length > 0) {
     formData.append("library_domain_ids", libraryDomainIds.join(","));
@@ -66,6 +65,14 @@ export async function fetchJobs(): Promise<Job[]> {
 
 export async function cancelJob(jobId: string): Promise<void> {
   await request(`/api/jobs/${jobId}`, { method: "DELETE" });
+}
+
+export async function deleteJobs(jobIds: string[]): Promise<{ deleted: number }> {
+  return request<{ deleted: number }>("/api/jobs/batch-delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ job_ids: jobIds }),
+  });
 }
 
 export async function updateGlossaryTerm(

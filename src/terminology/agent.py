@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Optional
 
 from rich.console import Console
 from rich.table import Table
@@ -37,7 +36,7 @@ class TerminologyAgent:
         source_language: str,
         target_languages: list[str],
         source_file: str = "",
-        library_domain_ids: Optional[list[int]] = None,
+        library_domain_ids: list[int] | None = None,
     ) -> Glossary:
         console.print("\n[bold cyan]▶ 正在提取术语候选…[/bold cyan]")
         terms, document_domains = await self._extractor.extract(text, source_language, target_languages)

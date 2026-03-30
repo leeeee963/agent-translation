@@ -15,7 +15,9 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-_RESULTS_DIR = Path(__file__).resolve().parents[2] / "data" / "eval_results"
+from src.utils.paths import get_data_dir
+
+_RESULTS_DIR = get_data_dir() / "data" / "eval_results"
 
 
 class EvalResult(BaseModel):

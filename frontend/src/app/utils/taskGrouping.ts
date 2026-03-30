@@ -130,10 +130,19 @@ const classifiers: Record<Exclude<GroupByKey, "none">, Classifier> = {
 
 // ── Sort ─────────────────────────────────────────────────────────────
 
+const STATUS_ORDER: Record<string, number> = { active: 0, error: 1, completed: 2 };
+
+function jobTime(j: Job): string {
+  return j.created_at || j.started_at || j.completed_at || "";
+}
+
 function sortJobs(jobs: Job[]): Job[] {
-  const latest = (j: Job) =>
-    [j.completed_at, j.started_at, j.created_at].filter(Boolean).sort().pop() || "";
-  return [...jobs].sort((a, b) => latest(b).localeCompare(latest(a)));
+  return [...jobs].sort((a, b) => {
+    const sa = STATUS_ORDER[getStatusCategory(a.status)] ?? 9;
+    const sb = STATUS_ORDER[getStatusCategory(b.status)] ?? 9;
+    if (sa !== sb) return sa - sb;
+    return jobTime(b).localeCompare(jobTime(a));
+  });
 }
 
 // ── Main grouping function ───────────────────────────────────────────
@@ -228,7 +237,8 @@ export function groupJobs(
     }
   }
 
-  const priDir = config.primarySort === "desc" ? -1 : 1;
+  // Status grouping always uses fixed order: active → error → completed
+  const priDir = config.primary === "status" ? 1 : (config.primarySort === "desc" ? -1 : 1);
   groups.sort((a, b) => priDir * (a._sortOrder - b._sortOrder) || priDir * a.label.localeCompare(b.label));
   return groups.map(({ _sortOrder: _, ...rest }) => rest);
 }

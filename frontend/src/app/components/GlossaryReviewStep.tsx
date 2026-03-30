@@ -1,7 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { Card } from "./ui/card";
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import type { Job, GlossaryTerm } from "../types/translation";
@@ -213,7 +211,7 @@ export function GlossaryReviewStep({ job, onConfirmed, readOnly = false, title, 
   const filterPills = (
     <div className="flex items-center gap-1.5 flex-wrap">
       <button
-        className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${filterCategory === "all" && filterSource === "all" ? "bg-foreground text-background border-foreground" : "bg-card text-foreground border-border hover:bg-muted/50"}`}
+        className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${filterCategory === "all" && filterSource === "all" ? "bg-foreground text-background border-foreground" : "bg-card text-foreground border-border hover:bg-muted/50"}`}
         onClick={() => { setFilterCategory("all"); setFilterSource("all"); setFilterUncertain(false); }}
       >
         {t('glossary.filterAll')}
@@ -221,7 +219,7 @@ export function GlossaryReviewStep({ job, onConfirmed, readOnly = false, title, 
       {categories.map((cat) => (
         <button
           key={cat}
-          className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${filterCategory === cat ? "bg-foreground text-background border-foreground" : "bg-card text-foreground border-border hover:bg-muted/50"}`}
+          className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${filterCategory === cat ? "bg-foreground text-background border-foreground" : "bg-card text-foreground border-border hover:bg-muted/50"}`}
           onClick={() => setFilterCategory(filterCategory === cat ? "all" : cat)}
         >
           {t(AI_CATEGORY_KEYS[cat]) || cat}
@@ -231,14 +229,14 @@ export function GlossaryReviewStep({ job, onConfirmed, readOnly = false, title, 
         <>
           <span className="text-border mx-0.5">|</span>
           <button
-            className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors flex items-center gap-1 ${filterSource === "library" ? "bg-foreground text-background border-foreground" : "bg-card text-foreground border-border hover:bg-muted/50"}`}
+            className={`text-xs px-2 py-0.5 rounded-full border transition-colors flex items-center gap-1 ${filterSource === "library" ? "bg-foreground text-background border-foreground" : "bg-card text-foreground border-border hover:bg-muted/50"}`}
             onClick={() => setFilterSource(filterSource === "library" ? "all" : "library")}
           >
             <LibraryBig className="size-2.5" />
             {t('glossary.libraryMatch')} ({libraryCount})
           </button>
           <button
-            className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${filterSource === "new" ? "bg-foreground text-background border-foreground" : "bg-card text-foreground border-border hover:bg-muted/50"}`}
+            className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${filterSource === "new" ? "bg-foreground text-background border-foreground" : "bg-card text-foreground border-border hover:bg-muted/50"}`}
             onClick={() => setFilterSource(filterSource === "new" ? "all" : "new")}
           >
             {t('glossary.newlyExtracted')} ({newCount})
@@ -247,7 +245,7 @@ export function GlossaryReviewStep({ job, onConfirmed, readOnly = false, title, 
       )}
       {uncertainCount > 0 && (
         <button
-          className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors flex items-center gap-1 ${filterUncertain ? "bg-foreground text-background border-foreground" : "bg-card text-foreground border-border hover:bg-muted/50"}`}
+          className={`text-xs px-2 py-0.5 rounded-full border transition-colors flex items-center gap-1 ${filterUncertain ? "bg-foreground text-background border-foreground" : "bg-card text-foreground border-border hover:bg-muted/50"}`}
           onClick={() => setFilterUncertain(!filterUncertain)}
         >
           <AlertTriangle className="size-2.5" />
@@ -333,7 +331,7 @@ export function GlossaryReviewStep({ job, onConfirmed, readOnly = false, title, 
                               : 'bg-muted-foreground text-background';
                             return (
                               <li key={opt.value} className="flex items-start gap-2">
-                                <span className={`${badgeColor} px-2 py-0.5 rounded text-[11px] font-medium shrink-0`}>
+                                <span className={`${badgeColor} px-2 py-0.5 rounded text-xs font-medium shrink-0`}>
                                   {t(opt.labelKey)}
                                 </span>
                                 <span className="break-words">{parts.length > 1 ? parts[1] : fullText}</span>

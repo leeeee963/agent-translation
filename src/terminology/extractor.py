@@ -169,7 +169,9 @@ _VALID_AI_CATEGORIES = frozenset({
     "proper_noun", "person", "place", "brand", "domain_term", "ambiguous",
 })
 
-_PROMPT_PATH = Path(__file__).resolve().parents[2] / "config" / "prompts" / "terminology.md"
+from src.utils.paths import get_config_dir
+
+_PROMPT_PATH = get_config_dir() / "prompts" / "terminology.md"
 
 
 class TerminologyExtractor:

@@ -29,7 +29,9 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-_CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
+from src.utils.paths import get_config_dir
+
+_CONFIG_DIR = get_config_dir()
 _STYLES_DIR = _CONFIG_DIR / "styles"
 
 _SKIP_IN_PROMPT = {"name", "description", "prompt_name", "prompt_description"}

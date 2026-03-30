@@ -55,6 +55,7 @@ const translations: Record<string, Record<AppLanguage, string>> = {
   'mode.directDesc': { en: 'Translate immediately', zh: '立即翻译，无需翻译前审核' },
   'mode.glossary': { en: 'Glossary Mode', zh: '术语表模式' },
   'mode.glossaryDesc': { en: 'Higher quality · Review terms before starting', zh: '更高翻译质量 · 确认术语后开始翻译' },
+  'mode.glossaryToggle': { en: 'Glossary', zh: '术语' },
   'mode.proInfoDesc': { en: 'Confirm terms first, then translate.', zh: '先确认术语，再开始翻译。' },
   'mode.libraryInfoTitle': { en: 'Terminology Library', zh: '术语库' },
   'mode.libraryInfoDesc': { en: 'Terms saved for good — smarter every time.', zh: '术语永久入库，越用越好用。' },
@@ -68,11 +69,14 @@ const translations: Record<string, Record<AppLanguage, string>> = {
   'domain.infoDesc': { en: 'When Domain is ON, the AI looks up matching terms from your Terminology Library before translating — ensuring consistent use of your approved vocabulary.', zh: '开启 Domain 后，AI 在翻译前会从术语库中匹配已有术语，确保全文使用你审核过的标准译法。' },
   'domain.infoAvailable': { en: 'Domains in your library:', zh: '当前术语库中的域：' },
   'domain.noDomains': { en: 'No domains yet — add them in the Terminology Library.', zh: '暂无术语域，请前往术语库添加。' },
+  'domain.selectedHint': { en: 'Terms from selected domains will be matched before translating to ensure consistency.', zh: '翻译前会从所选术语域中匹配术语，确保用词一致。' },
+  'domain.unselectedHint': { en: 'Optional — select domains to enable terminology matching for higher quality.', zh: '可选 — 选择术语域后将启用术语匹配，提升翻译质量。' },
   'domain.disabledHint': { en: 'Enable Pro first', zh: '请先开启 Pro' },
 
   // Task List
   'tasks.title': { en: 'Translation Tasks', zh: '翻译任务' },
   'tasks.empty': { en: 'No tasks yet', zh: '暂无任务' },
+  'tasks.emptyHint': { en: 'Upload files and select languages to start translating', zh: '上传文件并选择目标语言，即可开始翻译' },
   'tasks.active': { en: 'Active Tasks', zh: '进行中的任务' },
   'tasks.completed': { en: 'Completed Tasks', zh: '已完成' },
   'tasks.expandAll': { en: 'Expand All', zh: '展开全部' },
@@ -256,6 +260,15 @@ const translations: Record<string, Record<AppLanguage, string>> = {
   'banner.selectLang': { en: 'Please select at least one target language', zh: '请至少选择一种目标语言' },
   'banner.submitted': { en: 'translation tasks submitted', zh: '个翻译任务已提交' },
   'banner.glossaryConfirmed': { en: 'Glossary confirmed, translation started.', zh: '术语已确认，翻译任务已启动。' },
+
+  // Errors
+  'error.submitFailed': { en: 'Failed to submit translation tasks', zh: '提交翻译任务失败' },
+  'error.cancelFailed': { en: 'Failed to cancel task', zh: '取消任务失败' },
+  'error.deleteFailed': { en: 'Failed to delete task', zh: '删除任务失败' },
+
+  // Selection
+  'tasks.selected': { en: '{count} selected', zh: '已选 {count} 项' },
+  'tasks.selectHint': { en: 'Select tasks to delete', zh: '选择要删除的任务' },
 
   // Theme
   'theme.light': { en: 'Light', zh: '浅色' },

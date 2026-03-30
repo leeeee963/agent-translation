@@ -13,7 +13,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 import yaml
@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 def _load_config() -> dict[str, Any]:
-    cfg_path = Path(__file__).resolve().parents[2] / "config" / "settings.yaml"
+    from src.utils.paths import get_config_dir
+    cfg_path = get_config_dir() / "settings.yaml"
     if cfg_path.exists():
         with open(cfg_path) as f:
             return yaml.safe_load(f) or {}
@@ -34,7 +35,7 @@ class PoeClient:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         base_url: str = "https://api.poe.com/v1",
         timeout: int = 120,
         max_retries: int = 3,
@@ -49,11 +50,12 @@ class PoeClient:
         self.retry_delay = retry_delay or poe_cfg.get("retry_delay", 2.0)
         self._models: dict[str, str] = cfg.get("models", {})
         self._default_model = "GPT-4o"
-        self._http_client: Optional[httpx.AsyncClient] = None
+        self._http_client: httpx.AsyncClient | None = None
         cache_cfg = cfg.get("llm_cache", {})
         self._cache_enabled = bool(cache_cfg.get("enabled", True))
         cache_dir = cache_cfg.get("dir", "data/cache/llm")
-        self._cache_dir = Path(__file__).resolve().parents[2] / cache_dir
+        from src.utils.paths import get_data_dir
+        self._cache_dir = get_data_dir() / cache_dir
         if self._cache_enabled:
             self._cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -77,7 +79,7 @@ class PoeClient:
         self,
         messages: list[dict[str, str]],
         temperature: float = 0.3,
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> str:
         """Send a chat-completion request and return the assistant reply.
 
@@ -100,7 +102,7 @@ class PoeClient:
         }
         url = f"{self.base_url}/chat/completions"
 
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(1, self.max_retries + 1):
             try:
                 client = self._get_http_client()
@@ -128,7 +130,7 @@ class PoeClient:
         user_message: str,
         system_message: str = "",
         temperature: float = 0.3,
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> str:
         """Convenience wrapper: single user message with optional system prompt."""
         messages: list[dict[str, str]] = []

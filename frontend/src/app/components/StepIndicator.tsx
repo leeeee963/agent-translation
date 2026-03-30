@@ -62,7 +62,7 @@ export function StepIndicator({ steps }: StepIndicatorProps) {
             </div>
             <span
               className={[
-                "text-[11px] mt-1.5 text-center leading-tight",
+                "text-xs mt-1.5 text-center leading-tight",
                 isError
                   ? "text-destructive font-medium"
                   : isActive

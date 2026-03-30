@@ -8,20 +8,21 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import uuid
 from pathlib import Path
-from typing import Any
-
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 import yaml
 
+from src.models.task import TaskStatus as S
 from src.queue.manager import JobQueue
 from src.utils.file_utils import get_temp_dir, validate_file
+from src.utils.paths import get_config_dir, get_frontend_dist_dir
 from src.utils.style_loader import list_styles as load_style_configs
 
 logging.basicConfig(level=logging.INFO)
@@ -37,8 +38,8 @@ SUPPORTED_EXTENSIONS = [
     ".xml",
     ".html", ".htm",
 ]
-FRONTEND_DIST_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
-CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+FRONTEND_DIST_DIR = get_frontend_dist_dir()
+CONFIG_DIR = get_config_dir()
 PROMPTS_DIR = CONFIG_DIR / "prompts"
 UNIFIED_PROMPT_ID = "translator"
 
@@ -192,7 +193,7 @@ async def health() -> dict:
 
 @app.get("/api/languages")
 async def list_languages() -> dict:
-    cfg_path = Path(__file__).resolve().parent.parent / "config" / "settings.yaml"
+    cfg_path = CONFIG_DIR / "settings.yaml"
     with open(cfg_path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     return {"languages": cfg.get("supported_languages", [])}
@@ -280,6 +281,9 @@ async def get_llm_config() -> dict:
     poe_cfg = cfg.get("poe", {})
     models_cfg = cfg.get("models", {})
     raw_key = poe_cfg.get("api_key", "")
+    # Resolve env var placeholder (e.g. ${POE_API_KEY})
+    if raw_key.startswith("${") and raw_key.endswith("}"):
+        raw_key = os.getenv(raw_key[2:-1], "")
     # Mask the key: show only last 4 chars
     if raw_key and raw_key != "${POE_API_KEY}" and len(raw_key) > 4:
         masked = "•" * (len(raw_key) - 4) + raw_key[-4:]
@@ -321,7 +325,6 @@ async def update_llm_config(payload: LLMConfigUpdate) -> dict:
 async def submit_jobs(
     files: list[UploadFile] = File(...),
     target_languages: str = Form(...),
-    style: str = Form(""),
     use_glossary: str = Form("true"),
     library_domain_ids: str = Form(""),
 ) -> dict:
@@ -401,6 +404,14 @@ async def cancel_job(job_id: str) -> dict:
     return {"success": success}
 
 
+@app.post("/api/jobs/batch-delete")
+async def batch_delete_jobs(payload: dict) -> dict:
+    """Permanently delete jobs from history."""
+    job_ids: list = payload.get("job_ids", [])
+    deleted = job_queue.delete_batch(job_ids)
+    return {"deleted": deleted}
+
+
 @app.patch("/api/jobs/{job_id}/glossary/{term_id}")
 async def update_glossary_term(
     job_id: str,
@@ -411,7 +422,7 @@ async def update_glossary_term(
     job = job_queue.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="任务不存在")
-    if job.get("status") != "awaiting_glossary_review":
+    if job.get("status") != S.AWAITING_GLOSSARY_REVIEW:
         raise HTTPException(status_code=409, detail="术语表只能在 awaiting_glossary_review 阶段修改")
 
     updated = job_queue.update_glossary_term(
@@ -432,7 +443,7 @@ async def reextract_glossary(job_id: str) -> dict:
     job = job_queue.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="任务不存在")
-    if job.get("status") != "awaiting_glossary_review":
+    if job.get("status") != S.AWAITING_GLOSSARY_REVIEW:
         raise HTTPException(status_code=409, detail="只能在术语审核阶段重新提取")
     success = await job_queue.reextract_glossary(job_id)
     if not success:
@@ -449,7 +460,7 @@ async def confirm_glossary(
     job = job_queue.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="任务不存在")
-    if job.get("status") != "awaiting_glossary_review":
+    if job.get("status") != S.AWAITING_GLOSSARY_REVIEW:
         raise HTTPException(status_code=409, detail="任务不在术语确认阶段")
 
     success = await job_queue.confirm_glossary(
@@ -472,61 +483,6 @@ async def get_glossary(job_id: str) -> dict:
     return {"glossary": glossary_data}
 
 
-# ── Backward-compatible endpoints ─────────────────────────────────────
-
-@app.post("/api/translate")
-async def translate(
-    file: UploadFile = File(...),
-    target_languages: str = Form(...),
-    style: str = Form(""),
-) -> dict:
-    """Legacy single-file endpoint. Now routes through the job queue."""
-    targets = [t.strip() for t in target_languages.split(",") if t.strip()]
-    if not targets:
-        raise HTTPException(status_code=400, detail="至少选择一个目标语言")
-
-    suffix = Path(file.filename or "").suffix.lower()
-    if suffix not in SUPPORTED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"不支持的文件格式: {suffix}。当前支持: {', '.join(SUPPORTED_EXTENSIONS)}",
-        )
-
-    temp_dir = get_temp_dir()
-    work_dir = temp_dir / f"job_{uuid.uuid4().hex[:10]}"
-    work_dir.mkdir(parents=True, exist_ok=True)
-    source_path = work_dir / (file.filename or f"upload{suffix}")
-
-    try:
-        content = await file.read()
-        source_path.write_bytes(content)
-        validate_file(str(source_path), SUPPORTED_EXTENSIONS)
-    except ValueError as e:
-        shutil.rmtree(work_dir, ignore_errors=True)
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        shutil.rmtree(work_dir, ignore_errors=True)
-        raise HTTPException(status_code=500, detail=f"保存文件失败: {e}")
-
-    job_id = await job_queue.submit(
-        source_path=source_path,
-        filename=file.filename or source_path.name,
-        targets=targets,
-        work_dir=work_dir,
-    )
-    # Return task_id = job_id for backward compat
-    return {"task_id": job_id, "message": "任务已开始，请轮询 /api/status/{task_id}"}
-
-
-@app.get("/api/status/{task_id}")
-async def get_status(task_id: str) -> dict:
-    """Legacy status polling endpoint."""
-    result = job_queue.get_status_compat(task_id)
-    if result is None:
-        raise HTTPException(status_code=404, detail="任务不存在")
-    return result
-
-
 # ── File download ─────────────────────────────────────────────────────
 
 @app.get("/api/download/{job_id}/{filename}")
@@ -541,6 +497,51 @@ async def download(job_id: str, filename: str) -> FileResponse:
         raise HTTPException(status_code=404, detail="文件不存在或已过期")
 
     return FileResponse(path, filename=filename)
+
+
+@app.post("/api/export/{job_id}/{filename}")
+async def export_to_downloads(job_id: str, filename: str) -> dict:
+    """Save a translated file to ~/Downloads/ (for desktop app)."""
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="无效的文件名")
+
+    key = f"{job_id}/{filename}"
+    path = job_queue.outputs.get(key)
+    if not path or not path.exists():
+        raise HTTPException(status_code=404, detail="文件不存在或已过期")
+
+    downloads_dir = Path.home() / "Downloads"
+    save_path = downloads_dir / filename
+    # Handle name conflicts
+    if save_path.exists():
+        stem, suffix = save_path.stem, save_path.suffix
+        i = 1
+        while save_path.exists():
+            save_path = downloads_dir / f"{stem} ({i}){suffix}"
+            i += 1
+
+    import shutil
+    shutil.copy2(path, save_path)
+    return {"saved_path": str(save_path), "filename": save_path.name}
+
+
+@app.post("/api/export-content")
+async def export_content_to_downloads(payload: dict) -> dict:
+    """Save text content (e.g. review HTML) to ~/Downloads/."""
+    content = payload.get("content", "")
+    filename = payload.get("filename", "export.html")
+
+    downloads_dir = Path.home() / "Downloads"
+    save_path = downloads_dir / filename
+    if save_path.exists():
+        stem, suffix = save_path.stem, save_path.suffix
+        i = 1
+        while save_path.exists():
+            save_path = downloads_dir / f"{stem} ({i}){suffix}"
+            i += 1
+
+    save_path.write_text(content, encoding="utf-8")
+    return {"saved_path": str(save_path), "filename": save_path.name}
 
 
 # ── Terminology Library endpoints ─────────────────────────────────────

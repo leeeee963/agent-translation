@@ -10,7 +10,7 @@ import copy
 import logging
 import uuid
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable
 
 from rich.console import Console
 import yaml
@@ -38,7 +38,9 @@ SUPPORTED_EXTENSIONS = [
     ".xml",
     ".html", ".htm",
 ]
-_SETTINGS_PATH = Path(__file__).resolve().parents[2] / "config" / "settings.yaml"
+from src.utils.paths import get_config_dir
+
+_SETTINGS_PATH = get_config_dir() / "settings.yaml"
 
 ProgressCallback = Callable[[TranslationJob], None]
 
@@ -114,7 +116,7 @@ class Orchestrator:
         output_dir: str | None = None,
         quiet: bool = True,
         progress_callback: ProgressCallback | None = None,
-        library_domain_ids: Optional[list[int]] = None,
+        library_domain_ids: list[int] | None = None,
     ) -> tuple[TranslationJob, object | None, object | None]:
         """Phase 1: parse file and extract terminology candidates.
 

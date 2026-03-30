@@ -9,10 +9,9 @@ langdetect>=1.0.9
 rich>=13.7
 click>=8.1
 fastapi>=0.109
-uvicorn[standard]>=0.27
+uvicorn>=0.27
 python-multipart>=0.0.6
 python-docx>=1.1
-zhconv>=1.4.3
 # Phase A: Markdown, JSON (stdlib), YAML
 mistune>=3.0
 ruamel.yaml>=0.18
@@ -21,3 +20,5 @@ polib>=1.2.0
 lxml>=5.0
 # Phase C: HTML
 beautifulsoup4>=4.12
+# Desktop app
+pywebview>=5.0
