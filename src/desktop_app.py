@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import platform
 import socket
 import sys
 import threading
@@ -115,10 +114,7 @@ def main() -> None:
         min_size=(800, 600),
         js_api=api,
     )
-    if platform.system() == "Windows":
-        webview.start(gui="edgechromium")
-    else:
-        webview.start()
+    webview.start()
 
 
 if __name__ == "__main__":

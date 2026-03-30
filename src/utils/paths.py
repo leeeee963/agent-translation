@@ -7,8 +7,6 @@ while mutable user data lives in ~/Library/Application Support/AgentTranslation/
 
 from __future__ import annotations
 
-import os
-import platform
 import shutil
 import sys
 from pathlib import Path
@@ -28,11 +26,7 @@ def get_bundle_dir() -> Path:
 def get_data_dir() -> Path:
     """Root of mutable user data. Writable across launches."""
     if is_frozen():
-        if platform.system() == "Windows":
-            base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
-        else:
-            base = Path.home() / "Library" / "Application Support"
-        d = base / "AgentTranslation"
+        d = Path.home() / "Library" / "Application Support" / "AgentTranslation"
         d.mkdir(parents=True, exist_ok=True)
         return d
     return Path(__file__).resolve().parents[2]

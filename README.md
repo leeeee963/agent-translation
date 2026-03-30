@@ -40,11 +40,7 @@ scripts/run_server.sh
 ### 桌面应用打包
 
 ```bash
-# macOS
 scripts/build_macos.sh
-
-# Windows（需在 Windows 环境下执行）
-scripts\build_windows.bat
 ```
 
 ## 目录结构
