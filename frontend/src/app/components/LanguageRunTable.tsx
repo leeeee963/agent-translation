@@ -6,7 +6,7 @@ import type { LanguageRun } from "../types/translation";
 import { useLanguage } from "../contexts/LanguageContext";
 import { tokenDiff } from "../utils/diffUtils";
 import { downloadFile } from "../utils/download";
-import { isActive, statusLabel, getStatusColor, exportReviewChanges } from "../utils/jobStatus";
+import { isActive, statusLabel, getStatusColor, exportReviewChanges, isReviewChanged } from "../utils/jobStatus";
 
 // ── Inline diff display ─────────────────────────────────────────────
 
@@ -58,7 +58,11 @@ export function LanguageRunTable({ runs, sourceFilename }: { runs: LanguageRun[]
                   {run.percent > 0 && (
                     <>
                       <Progress value={run.percent || 0} className="h-1 flex-1" />
-                      <span className="text-muted-foreground flex-shrink-0 w-8 text-right">{Math.round(run.percent)}%</span>
+                      <span className="text-muted-foreground flex-shrink-0 text-right whitespace-nowrap">
+                        {run.segments_total > 0
+                          ? `${run.segments_done}/${run.segments_total}`
+                          : `${Math.round(run.percent)}%`}
+                      </span>
                     </>
                   )}
                   {run.error_message && (
@@ -103,7 +107,7 @@ export function LanguageRunTable({ runs, sourceFilename }: { runs: LanguageRun[]
               {hasReview && (
                 <div className="flex items-center gap-1.5 flex-shrink-0 text-xs text-muted-foreground">
                   <span className="cursor-pointer hover:text-foreground transition-colors">
-                    {t('review.title')} ({run.review_changes!.length})
+                    {t('review.title')} ({run.review_changes!.filter(isReviewChanged).length})
                   </span>
                   <button
                     onClick={(e) => { e.stopPropagation(); exportReviewChanges(run.target_language, run.review_changes!, baseName); }}
@@ -119,17 +123,26 @@ export function LanguageRunTable({ runs, sourceFilename }: { runs: LanguageRun[]
             {/* Expanded review details */}
             {hasReview && isExpanded && (
               <div className="border-t border-border bg-muted/30 px-3 py-2">
-                <div className="space-y-2 max-h-64 overflow-y-auto overflow-x-hidden">
-                  {run.review_changes!.map((c) => (
-                    <div key={c.block_id} className="border border-border rounded p-2 text-xs space-y-1 bg-card min-w-0">
-                      {c.source_text && (
-                        <p className="text-muted-foreground truncate">{t('review.original')}: {c.source_text}</p>
-                      )}
-                      <p className="text-foreground leading-relaxed break-all">
-                        <InlineDiff before={c.before} after={c.after} />
-                      </p>
-                    </div>
-                  ))}
+                <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-hidden">
+                  {run.review_changes!.map((c) => {
+                    const isChanged = isReviewChanged(c);
+                    return (
+                      <div key={c.block_id} className={`rounded p-2 text-xs min-w-0 ${isChanged ? "border border-border bg-card space-y-1" : "bg-transparent px-2 py-0.5"}`}>
+                        {isChanged ? (
+                          <>
+                            {c.source_text && (
+                              <p className="text-muted-foreground truncate">{t('review.original')}: {c.source_text}</p>
+                            )}
+                            <p className="text-foreground leading-relaxed break-all">
+                              <InlineDiff before={c.before} after={c.after} />
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-muted-foreground/60 leading-relaxed break-all">{c.after}</p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

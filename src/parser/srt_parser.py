@@ -24,7 +24,7 @@ class SrtParser(BaseParser):
     # parse
     # ------------------------------------------------------------------
     def parse(self, file_path: str) -> ParsedFile:
-        subs = pysrt.open(file_path)
+        subs = pysrt.open(file_path, encoding="utf-8")
         blocks: list[ContentBlock] = []
         total_words = 0
 

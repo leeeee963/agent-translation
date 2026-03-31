@@ -131,6 +131,7 @@ const translations: Record<string, Record<AppLanguage, string>> = {
   'status.terminology': { en: 'Extracting Glossary', zh: '提取术语表' },
   'status.awaiting_glossary_review': { en: 'Review', zh: '等待审核' },
   'status.translating': { en: 'Translating', zh: '翻译中' },
+  'status.reviewing': { en: 'Reviewing', zh: '审校中' },
   'status.rebuilding': { en: 'Rebuilding', zh: '重建文件' },
   'status.done': { en: 'Completed', zh: '已完成' },
   'status.error': { en: 'Error', zh: '出错' },

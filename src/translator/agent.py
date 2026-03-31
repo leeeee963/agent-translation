@@ -358,7 +358,10 @@ class TranslatorAgent:
             window_segments = segments[window_start : window_start + window_size]
             sem = asyncio.Semaphore(max(1, min(max_concurrent, len(window_segments))))
 
+            segments_done_in_window = 0
+
             async def _run_in_window(offset: int, segment: list[ContentBlock]) -> None:
+                nonlocal segments_done_in_window
                 async with sem:
                     abs_idx = window_start + offset
                     logger.info(
@@ -386,6 +389,23 @@ class TranslatorAgent:
                         next_preview_chars=next_preview_chars,
                         temperature=temperature,
                     )
+                    segments_done_in_window += 1
+                    done_so_far = window_start + segments_done_in_window
+                    if progress_callback:
+                        progress_callback(
+                            {
+                                "segments_done": done_so_far,
+                                "segments_total": total_segments,
+                                "units_done": _count_units_done(
+                                    segments[:done_so_far], block_to_unit
+                                ),
+                                "units_total": total_units,
+                                "unit_label": unit_label,
+                                "current_range": _segment_range_label(
+                                    segment, block_to_unit,
+                                ),
+                            }
+                        )
 
             await asyncio.gather(
                 *[
@@ -401,40 +421,28 @@ class TranslatorAgent:
                     context_window_size,
                 )
 
-            completed_segments = segments[: window_start + len(window_segments)]
-            if progress_callback:
-                progress_callback(
-                    {
-                        "segments_done": len(completed_segments),
-                        "segments_total": total_segments,
-                        "units_done": _count_units_done(completed_segments, block_to_unit),
-                        "units_total": total_units,
-                        "unit_label": unit_label,
-                        "current_range": _segment_range_label(
-                            window_segments[-1],
-                            block_to_unit,
-                        ),
-                    }
-                )
-
         review_settings = settings.get("naturalness_review", {})
         if self._review_enabled(review_settings, target_language):
             review_template = _load_review_template()
             review_temperature = float(settings.get("temperature", {}).get("review", 0.3))
+            review_total = len(segments)
+            review_done = 0
             if progress_callback:
                 progress_callback(
                     {
                         "status": "reviewing",
-                        "segments_done": total_segments,
-                        "segments_total": total_segments,
+                        "segments_done": 0,
+                        "segments_total": review_total,
                         "units_done": total_units,
                         "units_total": total_units,
                         "unit_label": unit_label,
                         "current_range": "",
                     }
                 )
-            review_tasks = [
-                self._naturalize_segment(
+
+            async def _tracked_review(segment):
+                nonlocal review_done
+                result = await self._naturalize_segment(
                     segment=segment,
                     source_language_name=LANGUAGE_NAMES_EN.get(source_language.lower(), source_language),
                     target_language_name=LANGUAGE_NAMES_EN.get(target_language.lower(), target_language),
@@ -442,9 +450,22 @@ class TranslatorAgent:
                     language_structural_notes=get_structural_notes(target_language),
                     temperature=review_temperature,
                 )
-                for segment in segments
-            ]
-            results = await asyncio.gather(*review_tasks)
+                review_done += 1
+                if progress_callback:
+                    progress_callback(
+                        {
+                            "status": "reviewing",
+                            "segments_done": review_done,
+                            "segments_total": review_total,
+                            "units_done": total_units,
+                            "units_total": total_units,
+                            "unit_label": unit_label,
+                            "current_range": "",
+                        }
+                    )
+                return result
+
+            results = await asyncio.gather(*[_tracked_review(seg) for seg in segments])
             all_changes = [change for result in results for change in result]
             logger.info(
                 "Naturalness review complete for '%s': %d blocks rewritten",
@@ -532,17 +553,22 @@ class TranslatorAgent:
         for b in translated_blocks:
             reviewed = b.translated_text
             original = originals.get(b.id, "")
-            if reviewed != original:
+            is_changed = reviewed != original
+            if is_changed:
                 b.reviewed_text = reviewed
                 b.translated_text = original
-                changes.append(
-                    {
-                        "block_id": b.id,
-                        "source_text": b.source_text,
-                        "before": original,
-                        "after": reviewed,
-                    }
-                )
+            entry: dict = {
+                "block_id": b.id,
+                "changed": is_changed,
+                "after": reviewed,
+            }
+            if is_changed:
+                entry["source_text"] = b.source_text
+                entry["before"] = original
+            else:
+                entry["source_text"] = ""
+                entry["before"] = ""
+            changes.append(entry)
         return changes
 
     @staticmethod

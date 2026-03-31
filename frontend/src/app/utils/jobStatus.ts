@@ -2,6 +2,11 @@ import type { Job, ReviewChange } from "../types/translation";
 import { tokenDiff } from "./diffUtils";
 import { saveContent } from "./download";
 
+/** Whether a review change entry represents an actual modification. */
+export function isReviewChanged(c: ReviewChange): boolean {
+  return c.changed !== false && c.before !== c.after;
+}
+
 // ── Status helpers ──────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<string, string> = {
@@ -53,11 +58,19 @@ export function exportReviewChanges(targetLanguage: string, changes: ReviewChang
       return `<ins>${t}</ins>`;
     }).join('');
 
-  const cards = changes.map(c => `
+  const changedCount = changes.filter(isReviewChanged).length;
+
+  const cards = changes.map(c => {
+    if (isReviewChanged(c)) {
+      return `
   <div class="card">
     <div class="src">原文：${esc(c.source_text)}</div>
     <div class="diff">${diffToHtml(c.before, c.after)}</div>
-  </div>`).join('\n');
+  </div>`;
+    }
+    return `
+  <div class="unchanged">${esc(c.after)}</div>`;
+  }).join('\n');
 
   const html = `<!DOCTYPE html>
 <html lang="zh"><head><meta charset="utf-8">
@@ -66,13 +79,14 @@ export function exportReviewChanges(targetLanguage: string, changes: ReviewChang
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:960px;margin:0 auto;padding:24px 28px;background:#f9fafb;color:#111;}
 h1{font-size:17px;font-weight:600;margin-bottom:20px;color:#1f2937;}
 .card{border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin-bottom:10px;background:#fff;}
+.unchanged{padding:4px 16px;margin-bottom:2px;color:#9ca3af;font-size:14px;line-height:1.75;}
 .src{color:#9ca3af;font-size:12px;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .diff{font-size:14px;line-height:1.75;}
 del{color:#dc2626;text-decoration:line-through;background:#fef2f2;padding:0 1px;border-radius:2px;}
 ins{color:#16a34a;text-decoration:none;background:#f0fdf4;padding:0 1px;border-radius:2px;}
 </style></head>
 <body>
-<h1>审校记录（共改写 ${changes.length} 处）- ${esc(targetLanguage)}</h1>
+<h1>审校记录（共改写 ${changedCount} 处）- ${esc(targetLanguage)}</h1>
 ${cards}
 </body></html>`;
 

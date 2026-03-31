@@ -20,5 +20,3 @@ polib>=1.2.0
 lxml>=5.0
 # Phase C: HTML
 beautifulsoup4>=4.12
-# Desktop app
-pywebview>=5.0

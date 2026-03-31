@@ -15,7 +15,8 @@
 
 ## How to Run
 
-- **Full app:** `scripts/run_server.sh` (installs deps, builds frontend, starts server on port 8000)
+- **User launch:** `./start.sh` (Mac) or `start.bat` (Windows) — auto-installs deps, starts server, opens browser
+- **Dev server:** `scripts/run_server.sh` (starts server on port 8000)
 - **Backend only:** `python -m uvicorn src.server:app --reload --port 8000`
 - **Frontend dev:** `cd frontend && npm run dev` (proxies API to localhost:8000)
 - **Tests:** `pytest` (test framework configured but tests/ is currently empty)

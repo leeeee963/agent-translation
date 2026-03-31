@@ -20,6 +20,7 @@ export interface ReviewChange {
   source_text: string;
   before: string;
   after: string;
+  changed?: boolean;
 }
 
 /** Backend language run status (from TranslationTask model) */

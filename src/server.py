@@ -499,50 +499,6 @@ async def download(job_id: str, filename: str) -> FileResponse:
     return FileResponse(path, filename=filename)
 
 
-@app.post("/api/export/{job_id}/{filename}")
-async def export_to_downloads(job_id: str, filename: str) -> dict:
-    """Save a translated file to ~/Downloads/ (for desktop app)."""
-    if ".." in filename or "/" in filename or "\\" in filename:
-        raise HTTPException(status_code=400, detail="无效的文件名")
-
-    key = f"{job_id}/{filename}"
-    path = job_queue.outputs.get(key)
-    if not path or not path.exists():
-        raise HTTPException(status_code=404, detail="文件不存在或已过期")
-
-    downloads_dir = Path.home() / "Downloads"
-    save_path = downloads_dir / filename
-    # Handle name conflicts
-    if save_path.exists():
-        stem, suffix = save_path.stem, save_path.suffix
-        i = 1
-        while save_path.exists():
-            save_path = downloads_dir / f"{stem} ({i}){suffix}"
-            i += 1
-
-    import shutil
-    shutil.copy2(path, save_path)
-    return {"saved_path": str(save_path), "filename": save_path.name}
-
-
-@app.post("/api/export-content")
-async def export_content_to_downloads(payload: dict) -> dict:
-    """Save text content (e.g. review HTML) to ~/Downloads/."""
-    content = payload.get("content", "")
-    filename = payload.get("filename", "export.html")
-
-    downloads_dir = Path.home() / "Downloads"
-    save_path = downloads_dir / filename
-    if save_path.exists():
-        stem, suffix = save_path.stem, save_path.suffix
-        i = 1
-        while save_path.exists():
-            save_path = downloads_dir / f"{stem} ({i}){suffix}"
-            i += 1
-
-    save_path.write_text(content, encoding="utf-8")
-    return {"saved_path": str(save_path), "filename": save_path.name}
-
 
 # ── Terminology Library endpoints ─────────────────────────────────────
 

@@ -101,7 +101,7 @@ function GroupSection({
     <div className={level > 0 ? "ml-3" : ""}>
       <button
         onClick={() => toggleGroupCollapse(groupKey)}
-        className="flex items-center gap-2 text-sm py-1.5 text-muted-foreground hover:text-foreground transition-colors w-full"
+        className="flex items-center gap-2 text-sm py-2.5 text-muted-foreground hover:text-foreground transition-colors w-full"
       >
         {isCollapsed ? <ChevronRight className="size-3.5" /> : <ChevronDown className="size-3.5" />}
         <span className={level === 0 ? "font-semibold text-foreground text-sm" : "font-medium text-xs"}>
@@ -111,7 +111,7 @@ function GroupSection({
       </button>
 
       {!isCollapsed && (
-        <div className="space-y-2 mt-1">
+        <div className="space-y-3 mt-2">
           {group.subGroups
             ? group.subGroups.map((sub) => (
                 <GroupSection
@@ -366,8 +366,8 @@ function JobCard({
 
           {/* ── Collapsible Content: Phase Cards ── */}
           <CollapsibleContent>
-            <div className="mt-2 pt-2 border-t border-border">
-              <div className="flex flex-col gap-2">
+            <div className="mt-3 pt-3 border-t border-border">
+              <div className="flex flex-col gap-3">
                 {getJobPhases(job).filter(p => p.status !== 'hidden').map((phase) => {
                   // Phase 1: Glossary
                   if (phase.id === 'glossary') {

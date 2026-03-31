@@ -10,7 +10,7 @@ import copy
 import logging
 import uuid
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Literal
 
 from rich.console import Console
 import yaml
@@ -327,15 +327,17 @@ class Orchestrator:
                         current_range = str(progress.get("current_range", ""))
                         if status_key == "reviewing":
                             task_status = TaskStatus.REVIEWING
-                            detail = f"审校中 ({segments_total}/{segments_total} 段)"
+                            detail = f"审校中 ({segments_done}/{segments_total} 段)"
+                            pct = self._estimate_run_percent(segments_done, segments_total, phase="reviewing")
                         else:
                             task_status = TaskStatus.TRANSLATING
                             detail = f"翻译中 ({segments_done}/{segments_total} 段)"
+                            pct = self._estimate_run_percent(segments_done, segments_total, phase="translating")
                         self._set_run_status(
                             run,
                             task_status,
                             detail,
-                            percent=self._estimate_run_percent(segments_done, segments_total),
+                            percent=pct,
                             segments_done=segments_done,
                             segments_total=segments_total,
                             units_done=units_done,
@@ -612,15 +614,17 @@ class Orchestrator:
                         current_range = str(progress.get("current_range", ""))
                         if status_key == "reviewing":
                             task_status = TaskStatus.REVIEWING
-                            detail = f"审校中 ({segments_total}/{segments_total} 段)"
+                            detail = f"审校中 ({segments_done}/{segments_total} 段)"
+                            pct = self._estimate_run_percent(segments_done, segments_total, phase="reviewing")
                         else:
                             task_status = TaskStatus.TRANSLATING
                             detail = f"翻译中 ({segments_done}/{segments_total} 段)"
+                            pct = self._estimate_run_percent(segments_done, segments_total, phase="translating")
                         self._set_run_status(
                             run,
                             task_status,
                             detail,
-                            percent=self._estimate_run_percent(segments_done, segments_total),
+                            percent=pct,
                             segments_done=segments_done,
                             segments_total=segments_total,
                             units_done=units_done,
@@ -781,10 +785,13 @@ class Orchestrator:
         return str(Path(output_dir) / f"{source_path.stem}_{target_language}{source_path.suffix}")
 
     @staticmethod
-    def _estimate_run_percent(segments_done: int, segments_total: int) -> int:
+    def _estimate_run_percent(segments_done: int, segments_total: int, *, phase: Literal["translating", "reviewing"] = "translating") -> int:
         if segments_total <= 0:
-            return 20
-        return min(95, 20 + int((segments_done / segments_total) * 70))
+            return 0 if phase == "translating" else 50
+        ratio = segments_done / segments_total
+        if phase == "reviewing":
+            return min(99, 50 + int(ratio * 50))
+        return min(50, int(ratio * 50))
 
     @staticmethod
     def _estimate_job_percent(

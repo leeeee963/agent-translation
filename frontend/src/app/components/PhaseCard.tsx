@@ -26,7 +26,7 @@ export function PhaseCard({
   return (
     <div
       className={[
-        "bg-card border border-border rounded-lg px-3 py-2.5",
+        "bg-card border border-border rounded-lg px-5 py-4",
         "shadow-[0_1px_2px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.03)]",
         "transition-[transform,box-shadow,background-color] duration-300 ease-out",
         "hover:-translate-y-px hover:shadow-[0_2px_4px_rgba(0,0,0,0.06),0_4px_12px_rgba(0,0,0,0.04)] hover:bg-accent/30",
@@ -53,7 +53,7 @@ export function PhaseCard({
         <span className="text-sm font-medium">{title}</span>
         {description && <span className="text-xs text-muted-foreground">{description}</span>}
       </div>
-      {hasChildren && open && <div className="overflow-hidden">{children}</div>}
+      {hasChildren && open && <div className="overflow-hidden mt-3">{children}</div>}
     </div>
   );
 }

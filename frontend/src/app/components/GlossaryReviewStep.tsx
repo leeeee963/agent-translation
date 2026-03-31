@@ -257,8 +257,8 @@ export function GlossaryReviewStep({ job, onConfirmed, readOnly = false, title, 
 
   return (
     <div className={hasHeader
-      ? "bg-card border border-border rounded-lg px-3 py-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.03)] space-y-3"
-      : "space-y-3"
+      ? "bg-card border border-border rounded-lg px-5 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.03)] space-y-4"
+      : "space-y-4"
     }>
       {/* Header row: title + filters */}
       {hasHeader && (

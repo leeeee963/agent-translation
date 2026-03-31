@@ -25,7 +25,7 @@ def _load_config() -> dict[str, Any]:
     from src.utils.paths import get_config_dir
     cfg_path = get_config_dir() / "settings.yaml"
     if cfg_path.exists():
-        with open(cfg_path) as f:
+        with open(cfg_path, encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
     return {}
 

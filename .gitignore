@@ -6,6 +6,7 @@ __pycache__/
 build/
 dist/
 .venv/
+.venv-win/
 .venv_x86/
 
 # Frontend
