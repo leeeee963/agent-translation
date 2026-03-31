@@ -1,41 +1,66 @@
 #!/bin/bash
 set -e
 cd "$(dirname "$0")"
+chmod +x "$0" 2>/dev/null || true
 
 echo "============================================"
 echo "  AgentTranslation - Starting..."
 echo "============================================"
 echo ""
 
-# === Check Python 3 ===
-if ! command -v python3 &>/dev/null; then
-    echo "[Setup] Python not found, installing..."
+# === Ensure Homebrew is available ===
+ensure_brew() {
     if command -v brew &>/dev/null; then
-        brew install python
-    else
-        echo "[Setup] Installing Homebrew first..."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        brew install python
+        return
     fi
+    echo "[Setup] Installing Homebrew (macOS package manager)..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    # Add Homebrew to PATH for Apple Silicon and Intel Macs
+    if [ -f /opt/homebrew/bin/brew ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [ -f /usr/local/bin/brew ]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+}
+
+# === Check Python 3 (need 3.11+) ===
+need_python=false
+if ! command -v python3 &>/dev/null; then
+    need_python=true
+else
+    py_version=$(python3 -c 'import sys; print(sys.version_info.minor)')
+    if [ "$py_version" -lt 11 ]; then
+        echo "[Setup] Python 3.$(echo $py_version) found but 3.11+ required, upgrading..."
+        need_python=true
+    fi
+fi
+if $need_python; then
+    echo "[Setup] Installing Python 3.12..."
+    ensure_brew
+    brew install python@3.12
+    # Prefer the newly installed Python
+    export PATH="$(brew --prefix python@3.12)/libexec/bin:$PATH"
 fi
 echo "[OK] Python: $(python3 --version)"
 
 # === Check Node.js ===
 if ! command -v node &>/dev/null; then
     echo "[Setup] Node.js not found, installing..."
-    if command -v brew &>/dev/null; then
-        brew install node
-    else
-        echo "[ERROR] Please install Node.js: https://nodejs.org/"
-        exit 1
-    fi
+    ensure_brew
+    brew install node
 fi
 echo "[OK] Node.js: $(node --version)"
 
 # === Setup Python venv ===
+recreate_venv=false
 if [ ! -f .venv/bin/activate ]; then
+    recreate_venv=true
+elif ! .venv/bin/python3 --version &>/dev/null; then
+    echo "[Setup] Existing venv is broken (Python binary missing), recreating..."
+    recreate_venv=true
+fi
+if $recreate_venv; then
     if [ -d .venv ]; then
-        echo "[Setup] Removing incompatible venv, recreating for macOS..."
         rm -rf .venv
     fi
     echo "[Setup] Creating Python virtual environment..."
