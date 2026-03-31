@@ -1,4 +1,4 @@
-# AgentTranslation — 多语种智能翻译系统
+# AgentTranslation — 多语种智能翻译Agent
 
 拖拽上传文件，选择目标语言，一键翻译。支持术语管理、风格统一、自然度审校，翻译质量接近人工译员水平。
 
