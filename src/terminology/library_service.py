@@ -405,37 +405,57 @@ class TermLibraryService:
 
     def import_csv(
         self, domain_id: int, content: str, delimiter: str = ","
-    ) -> tuple[int, int]:
+    ) -> dict:
         """Import terms from CSV/TSV content.
 
         Expected format:
-            source,zh-CN,en,ja,...,strategy,context
-        First column must be 'source'. Language columns auto-detected.
-        'strategy' and 'context' are optional.
+            en,zh-CN,ja,...,strategy,context
+        All columns are language codes or optional meta fields (strategy, context).
+        No special 'source' column required. If a legacy 'source' column exists,
+        it is treated as 'en'. The 'en' value is used as the DB source field;
+        if no 'en' column, the first language column is used instead.
+
+        Returns dict with keys: inserted, updated, skipped, warnings.
         """
         reader = csv.DictReader(io.StringIO(content), delimiter=delimiter)
         if not reader.fieldnames:
-            return 0, 0
+            return {"inserted": 0, "updated": 0, "skipped": 0,
+                    "warnings": ["File is empty or has no headers / 文件为空或没有表头"]}
 
         fields = [f.strip().lower() for f in reader.fieldnames]
-        if "source" not in fields:
-            raise ValueError("CSV must have a 'source' column")
 
-        # Build field mapping
-        meta_fields = {"source", "strategy", "context", "category", "ai_category"}
+        # Backward compat: treat legacy 'source' column as 'en'
+        has_legacy_source = "source" in fields
+
+        meta_fields = {"strategy", "context", "category", "ai_category", "source"}
         lang_fields = [f for f in fields if f not in meta_fields]
 
+        # If legacy 'source' column exists, add 'en' to lang_fields if not already there
+        if has_legacy_source and "en" not in lang_fields:
+            lang_fields.insert(0, "en")
+
+        if not lang_fields:
+            raise ValueError(
+                "No language columns found. Use language codes as column headers (e.g., en, zh-CN, ja). "
+                "/ 未找到语言列，请使用语言代码作为列名（如 en、zh-CN、ja）。"
+            )
+
+        # Determine which language to use as DB source field: prefer 'en', else first lang
+        source_lang = "en" if "en" in lang_fields else lang_fields[0]
+
         terms: list[dict] = []
+        skipped_no_lang = 0
         for row in reader:
             # Normalize keys
             row = {k.strip().lower(): v.strip() for k, v in row.items() if v and v.strip()}
-            source = row.get("source", "")
-            if not source:
-                continue
 
+            # Collect all language values; legacy 'source' column maps to 'en'
             targets = {}
             for lang in lang_fields:
-                val = row.get(lang, "")
+                if lang == "en" and has_legacy_source and "en" not in row:
+                    val = row.get("source", "")
+                else:
+                    val = row.get(lang, "")
                 if val:
                     # Restore original case from fieldnames
                     orig_key = next(
@@ -444,17 +464,32 @@ class TermLibraryService:
                     )
                     targets[orig_key.strip()] = val
 
+            if not targets:
+                skipped_no_lang += 1
+                continue
+
+            # DB source = the value of the preferred source language
+            source_val = targets.get(source_lang, "")
+            if not source_val:
+                # Fallback: use the first non-empty language value
+                source_val = next(iter(targets.values()))
+
             terms.append({
-                "source": source,
+                "source": source_val,
                 "targets": targets,
                 "strategy": row.get("strategy", "hard"),
                 "ai_category": row.get("ai_category") or row.get("category", ""),
                 "context": row.get("context", ""),
             })
 
-        return self._db.bulk_upsert(domain_id, terms)
+        inserted, updated = self._db.bulk_upsert(domain_id, terms)
+        skipped = skipped_no_lang
+        warnings: list[str] = []
+        if skipped_no_lang:
+            warnings.append(f"{skipped_no_lang} rows skipped: no language values / 跳过 {skipped_no_lang} 行：无任何语言值")
+        return {"inserted": inserted, "updated": updated, "skipped": skipped, "warnings": warnings}
 
-    def import_tsv(self, domain_id: int, content: str) -> tuple[int, int]:
+    def import_tsv(self, domain_id: int, content: str) -> dict:
         return self.import_csv(domain_id, content, delimiter="\t")
 
     def export_csv(self, domain_id: int) -> str:
@@ -465,10 +500,14 @@ class TermLibraryService:
 
     def export_json(self, domain_id: int) -> str:
         terms = self._db.export_domain(domain_id)
-        # Clean up internal fields for export
         for t in terms:
             for key in ("id", "domain_id", "source_normalized", "created_at", "updated_at", "last_used_at", "use_count"):
                 t.pop(key, None)
+            # Ensure source value appears in targets under 'en'
+            targets = t.get("targets", {})
+            if "en" not in targets and t.get("source"):
+                targets["en"] = t["source"]
+                t["targets"] = targets
         return json.dumps(terms, ensure_ascii=False, indent=2)
 
     def _export_delimited(self, domain_id: int, delimiter: str = ",") -> str:
@@ -476,23 +515,29 @@ class TermLibraryService:
         if not terms:
             return ""
 
-        # Collect all language keys across all terms
+        # Collect all language keys across all terms, ensure 'en' is included
         all_langs: list[str] = []
         for t in terms:
             for lang in t.get("targets", {}):
                 if lang not in all_langs:
                     all_langs.append(lang)
+        if "en" not in all_langs:
+            all_langs.insert(0, "en")
 
         output = io.StringIO()
-        fieldnames = ["source"] + all_langs + ["strategy", "ai_category", "context"]
+        fieldnames = all_langs + ["strategy", "ai_category", "context"]
         writer = csv.DictWriter(output, fieldnames=fieldnames, delimiter=delimiter)
         writer.writeheader()
 
         for t in terms:
-            row = {"source": t["source"]}
             targets = t.get("targets", {})
+            row: dict[str, str] = {}
             for lang in all_langs:
-                row[lang] = targets.get(lang, "")
+                val = targets.get(lang, "")
+                # Ensure source value appears in 'en' column if targets lacks it
+                if lang == "en" and not val:
+                    val = t.get("source", "")
+                row[lang] = val
             row["strategy"] = t.get("strategy", "hard")
             row["ai_category"] = t.get("ai_category", "")
             row["context"] = t.get("context", "")

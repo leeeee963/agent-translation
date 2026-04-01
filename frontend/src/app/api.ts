@@ -207,10 +207,10 @@ export async function deleteLibraryTermsBatch(termIds: number[]): Promise<{ dele
   });
 }
 
-export async function importLibraryTerms(domainId: number, file: File): Promise<{ inserted: number; updated: number }> {
+export async function importLibraryTerms(domainId: number, file: File): Promise<{ inserted: number; updated: number; skipped: number; warnings: string[] }> {
   const formData = new FormData();
   formData.append("file", file);
-  return request<{ inserted: number; updated: number }>(`/api/library/domains/${domainId}/import`, {
+  return request<{ inserted: number; updated: number; skipped: number; warnings: string[] }>(`/api/library/domains/${domainId}/import`, {
     method: "POST",
     body: formData,
   });

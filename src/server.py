@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
 import yaml
 
@@ -603,30 +603,66 @@ async def batch_delete_library_terms(payload: BatchDeleteRequest) -> dict:
     return {"deleted": count}
 
 
+@app.get("/api/library/import-template")
+async def download_import_template():
+    langs = _SERVER_CFG.get("supported_languages", [])
+    lang_codes = [l["code"] for l in langs if "code" in l] or ["en", "zh-CN", "ja"]
+    # Ensure 'en' comes first
+    if "en" in lang_codes:
+        lang_codes.remove("en")
+    lang_codes.insert(0, "en")
+    header = ",".join(lang_codes + ["strategy", "context"])
+    example_vals = {
+        "en": "example term", "zh-CN": "示例术语", "zh-TW": "範例術語",
+        "ja": "用語例", "ko": "용어 예", "fr": "terme exemple",
+        "de": "Beispielbegriff", "es": "término ejemplo",
+    }
+    row = ",".join(example_vals.get(c, "") for c in lang_codes) + ",hard,"
+    content = header + "\n" + row + "\n"
+    return Response(
+        content=content, media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=import_template.csv"},
+    )
+
+
 @app.post("/api/library/domains/{domain_id}/import")
 async def import_library_terms(
     domain_id: int,
     file: UploadFile = File(...),
 ) -> dict:
     svc = _get_library_service()
-    content = (await file.read()).decode("utf-8")
-    filename = (file.filename or "").lower()
 
+    raw = await file.read()
+    if len(raw) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB) / 文件过大（最大 10MB）")
+
+    # Try decoding with BOM-aware UTF-8 first, then plain UTF-8
+    for encoding in ("utf-8-sig", "utf-8"):
+        try:
+            content = raw.decode(encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="File encoding not supported. Please save as UTF-8. / 文件编码不支持，请另存为 UTF-8 格式。",
+        )
+
+    filename = (file.filename or "").lower()
     try:
         if filename.endswith(".tsv"):
-            inserted, updated = svc.import_tsv(domain_id, content)
+            result = svc.import_tsv(domain_id, content)
         else:
-            inserted, updated = svc.import_csv(domain_id, content)
+            result = svc.import_csv(domain_id, content)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    return {"inserted": inserted, "updated": updated}
+    return result
 
 
 @app.get("/api/library/domains/{domain_id}/export")
 async def export_library_terms(domain_id: int, format: str = "csv") -> Any:
-    from fastapi.responses import Response
-
     svc = _get_library_service()
     if format == "tsv":
         content = svc.export_tsv(domain_id)

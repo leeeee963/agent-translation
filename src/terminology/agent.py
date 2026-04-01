@@ -206,7 +206,7 @@ class TerminologyAgent:
 
             strategy = ""
             if term:
-                strategy_map = {"hard": "刚性翻译", "keep_original": "保留原文", "skip": "跳过"}
+                strategy_map = {"hard": "约束", "keep_original": "保留", "skip": "自由"}
                 strategy = strategy_map.get(term.strategy, term.strategy)
 
             table.add_row(

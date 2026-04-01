@@ -18,12 +18,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "./ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
 import type { LibraryDomain, LibraryTerm, Language } from "../types/translation";
 import {
   fetchLibraryDomains,
@@ -52,15 +46,10 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 import { useLanguage } from "../contexts/LanguageContext";
-import { downloadFile } from "../utils/download";
 
 const PAGE_SIZE = 50;
 
-const STRATEGY_LABELS: Record<string, string> = {
-  hard: "刚性翻译",
-  keep_original: "保留原文",
-  skip: "跳过",
-};
+// Strategy labels defined inside component to access i18n
 
 export function TermLibraryPage() {
   const { t } = useLanguage();
@@ -92,6 +81,11 @@ export function TermLibraryPage() {
 
 export function TermLibraryContent() {
   const { t, language } = useLanguage();
+  const STRATEGY_LABELS: Record<string, string> = {
+    hard: t('glossary.strategyEnforce'),
+    keep_original: t('glossary.strategyPreserve'),
+    skip: t('glossary.strategySkip'),
+  };
   const domainName = (d: LibraryDomain) => (language === 'zh' ? d.name_zh : d.name_en) || d.name;
   const domainDesc = (d: LibraryDomain) => (language === 'zh' ? d.description_zh : d.description) || d.description;
 
@@ -109,11 +103,9 @@ export function TermLibraryContent() {
   const [showImport, setShowImport] = useState(false);
   const [newDomainName, setNewDomainName] = useState("");
   const [newDomainDesc, setNewDomainDesc] = useState("");
-  const [newTermSource, setNewTermSource] = useState("");
-  const [newTermTarget, setNewTermTarget] = useState("");
-  const [newTermLang, setNewTermLang] = useState("zh-CN");
+  const [newTermValues, setNewTermValues] = useState<Record<string, string>>({});
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [importResult, setImportResult] = useState("");
+  const [importResult, setImportResult] = useState<{ message: string; type: "success" | "warning" | "error" } | null>(null);
 
   // Inline editing
   const [editingCell, setEditingCell] = useState<{ termId: number; field: string } | null>(null);
@@ -159,9 +151,10 @@ export function TermLibraryContent() {
     loadTerms();
   }, [loadTerms]);
 
-  // Default visible langs = languages that have data in current terms
+  // Default visible langs = languages that have data in current terms + always include 'en'
   useEffect(() => {
     const langsWithData = new Set(terms.flatMap((t) => Object.keys(t.targets)));
+    langsWithData.add("en");  // en always visible (primary lookup key)
     setVisibleLangs(langsWithData);
   }, [terms]);
 
@@ -180,7 +173,7 @@ export function TermLibraryContent() {
   };
 
   const handleDeleteDomain = async (id: number) => {
-    if (!confirm("确定删除此领域及其所有术语？")) return;
+    if (!confirm(t('library.confirmDeleteDomain'))) return;
     try {
       await deleteLibraryDomain(id);
       if (selectedDomainId === id) {
@@ -194,18 +187,25 @@ export function TermLibraryContent() {
   };
 
   const handleAddTerm = async () => {
-    if (!newTermSource.trim() || !selectedDomainId) return;
+    const enVal = (newTermValues["en"] || "").trim();
+    const hasAnyValue = Object.values(newTermValues).some((v) => v.trim());
+    if (!hasAnyValue || !selectedDomainId) return;
+    // Use en value as source if available, otherwise first non-empty value
+    const source = enVal || Object.values(newTermValues).find((v) => v.trim()) || "";
+    const targets: Record<string, string> = {};
+    for (const [lang, val] of Object.entries(newTermValues)) {
+      if (val.trim()) targets[lang] = val.trim();
+    }
     try {
       await createLibraryTerm(selectedDomainId, {
-        source: newTermSource,
-        targets: newTermTarget ? { [newTermLang]: newTermTarget } : {},
+        source,
+        targets,
         strategy: "hard",
       });
       await loadTerms();
       await loadDomains();
       setShowAddTerm(false);
-      setNewTermSource("");
-      setNewTermTarget("");
+      setNewTermValues({});
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -223,7 +223,7 @@ export function TermLibraryContent() {
 
   const handleBatchDelete = async () => {
     if (selectedTermIds.size === 0) return;
-    if (!confirm(`确定删除选中的 ${selectedTermIds.size} 个术语？`)) return;
+    if (!confirm(t('library.confirmBatchDelete').replace('{count}', String(selectedTermIds.size)))) return;
     try {
       await deleteLibraryTermsBatch(Array.from(selectedTermIds));
       setSelectedTermIds(new Set());
@@ -238,28 +238,41 @@ export function TermLibraryContent() {
     if (!importFile || !selectedDomainId) return;
     try {
       const result = await importLibraryTerms(selectedDomainId, importFile);
-      setImportResult(`导入完成：新增 ${result.inserted} 个，更新 ${result.updated} 个`);
+      let msg = t('library.importSuccess')
+        .replace('{inserted}', String(result.inserted))
+        .replace('{updated}', String(result.updated));
+      if (result.skipped > 0) {
+        msg += ' ' + t('library.importSkipped').replace('{skipped}', String(result.skipped));
+      }
+      if (result.warnings?.length) {
+        msg += '\n' + result.warnings.join('\n');
+      }
+      const type = result.skipped > 0 || result.warnings?.length ? "warning" : "success";
+      setImportResult({ message: msg, type });
       await loadTerms();
       await loadDomains();
     } catch (err) {
-      setImportResult(err instanceof Error ? err.message : String(err));
+      setImportResult({ message: err instanceof Error ? err.message : String(err), type: "error" });
     }
   };
 
   const handleInlineEdit = async (termId: number, field: string) => {
     if (!editingCell) return;
     try {
-      if (field === "source") {
-        await updateLibraryTerm(termId, { source: editValue });
-      } else if (field === "context") {
+      if (field === "context") {
         await updateLibraryTerm(termId, { context: editValue });
       } else {
         // It's a language column
         const term = terms.find((t) => t.id === termId);
         if (term) {
-          await updateLibraryTerm(termId, {
+          const update: Record<string, unknown> = {
             targets: { ...term.targets, [field]: editValue },
-          });
+          };
+          // Keep DB source field in sync when editing 'en'
+          if (field === "en") {
+            update.source = editValue;
+          }
+          await updateLibraryTerm(termId, update);
         }
       }
       setEditingCell(null);
@@ -343,7 +356,7 @@ export function TermLibraryContent() {
                 ))}
                 {domains.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    暂无领域，点击"新建"创建
+                    {t('library.noDomains')}
                   </p>
                 )}
               </div>
@@ -357,7 +370,7 @@ export function TermLibraryContent() {
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <h2 className="text-lg font-medium">{domainName(selectedDomain)}</h2>
-                      <Badge>{totalTerms} 个术语</Badge>
+                      <Badge>{t('library.termCount').replace('{count}', String(totalTerms))}</Badge>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="relative">
@@ -372,45 +385,39 @@ export function TermLibraryContent() {
                           className="pl-8 h-8 w-48 text-sm"
                         />
                       </div>
-                      <Button size="sm" variant="outline" onClick={() => setShowAddTerm(true)}>
+                      <Button size="sm" variant="outline" onClick={() => { setNewTermValues({}); setShowAddTerm(true); }}>
                         <Plus className="size-3.5 mr-1" />
                         {t('library.addTerm')}
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => { setImportFile(null); setImportResult(""); setShowImport(true); }}>
+                      <Button size="sm" variant="outline" onClick={() => { setImportFile(null); setImportResult(null); setShowImport(true); }}>
                         <Upload className="size-3.5 mr-1" />
                         {t('library.import')}
                       </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="sm" variant="outline">
-                            <Download className="size-3.5 mr-1" />
-                            {t('library.export')}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => downloadFile(getExportUrl(selectedDomain.id, "csv"))}>
-                            CSV
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => downloadFile(getExportUrl(selectedDomain.id, "tsv"))}>
-                            TSV
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => downloadFile(getExportUrl(selectedDomain.id, "json"))}>
-                            JSON
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center gap-0.5">
+                        {(["csv", "tsv", "json"] as const).map((fmt) => (
+                          <a
+                            key={fmt}
+                            href={getExportUrl(selectedDomain.id, fmt)}
+                            download={`terms_${selectedDomain.id}.${fmt}`}
+                            className="inline-flex items-center h-8 px-2 text-xs rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                          >
+                            {fmt === "csv" && <Download className="size-3 mr-1" />}
+                            {fmt.toUpperCase()}
+                          </a>
+                        ))}
+                      </div>
                       <div className="relative">
                         <Button size="sm" variant="outline" onClick={() => setShowLangPicker(!showLangPicker)}>
                           <Columns className="size-3.5 mr-1" />
-                          语言列
+                          {t('library.langColumns')}
                         </Button>
                         {showLangPicker && (
                           <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-50 p-2 w-56 max-h-64 overflow-auto">
                             <div className="flex justify-between items-center mb-2 px-1">
-                              <span className="text-xs font-medium text-muted-foreground">显示语言列</span>
+                              <span className="text-xs font-medium text-muted-foreground">{t('library.showLangColumns')}</span>
                               <button className="text-xs text-foreground hover:underline" onClick={() => {
                                 setVisibleLangs(new Set(allLanguages.map((l) => l.code)));
-                              }}>全选</button>
+                              }}>{t('common.selectAll')}</button>
                             </div>
                             {allLanguages.map((lang) => (
                               <label key={lang.code} className="flex items-center gap-2 px-1 py-1 hover:bg-accent/50 rounded cursor-pointer text-sm">
@@ -460,13 +467,12 @@ export function TermLibraryContent() {
                               }}
                             />
                           </TableHead>
-                          <TableHead>原文</TableHead>
                           {allLangs.map((lang) => (
                             <TableHead key={lang}>{langNameMap[lang] || lang}</TableHead>
                           ))}
-                          <TableHead className="w-24">策略</TableHead>
-                          <TableHead>领域含义</TableHead>
-                          <TableHead className="w-16 text-center">使用</TableHead>
+                          <TableHead className="w-24">{t('library.termStrategy')}</TableHead>
+                          <TableHead>{t('library.termContext')}</TableHead>
+                          <TableHead className="w-16 text-center">{t('library.termUsage')}</TableHead>
                           <TableHead className="w-12"></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -480,31 +486,10 @@ export function TermLibraryContent() {
                                 onChange={() => toggleTermSelection(term.id)}
                               />
                             </TableCell>
-                            <TableCell>
-                              {editingCell?.termId === term.id && editingCell.field === "source" ? (
-                                <div className="flex items-center gap-1">
-                                  <input
-                                    autoFocus
-                                    value={editValue}
-                                    onChange={(e) => setEditValue(e.target.value)}
-                                    onBlur={() => handleInlineEdit(term.id, "source")}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") handleInlineEdit(term.id, "source");
-                                      if (e.key === "Escape") setEditingCell(null);
-                                    }}
-                                    className="border rounded px-1.5 py-0.5 text-sm w-full"
-                                  />
-                                </div>
-                              ) : (
-                                <button
-                                  className="text-sm font-medium text-left w-full hover:bg-accent/50 rounded px-1 py-0.5"
-                                  onClick={() => { setEditingCell({ termId: term.id, field: "source" }); setEditValue(term.source); }}
-                                >
-                                  {term.source}
-                                </button>
-                              )}
-                            </TableCell>
-                            {allLangs.map((lang) => (
+                            {allLangs.map((lang) => {
+                              // For 'en' column, fall back to term.source for backward compat with existing data
+                              const cellValue = term.targets[lang] || (lang === "en" ? term.source : "") || "";
+                              return (
                               <TableCell key={lang}>
                                 {editingCell?.termId === term.id && editingCell.field === lang ? (
                                   <div className="flex items-center gap-1">
@@ -525,14 +510,15 @@ export function TermLibraryContent() {
                                   </div>
                                 ) : (
                                   <button
-                                    className="text-sm text-left w-full hover:bg-accent/50 rounded px-1 py-0.5 min-h-6"
-                                    onClick={() => { setEditingCell({ termId: term.id, field: lang }); setEditValue(term.targets[lang] || ""); }}
+                                    className={`text-sm text-left w-full hover:bg-accent/50 rounded px-1 py-0.5 min-h-6 ${lang === "en" ? "font-medium" : ""}`}
+                                    onClick={() => { setEditingCell({ termId: term.id, field: lang }); setEditValue(cellValue); }}
                                   >
-                                    {term.targets[lang] || <span className="text-muted-foreground/40">—</span>}
+                                    {cellValue || <span className="text-muted-foreground/40">—</span>}
                                   </button>
                                 )}
                               </TableCell>
-                            ))}
+                              );
+                            })}
                             <TableCell>
                               <span className="text-xs text-muted-foreground">
                                 {STRATEGY_LABELS[term.strategy] || term.strategy}
@@ -576,7 +562,7 @@ export function TermLibraryContent() {
                         {terms.length === 0 && (
                           <TableRow>
                             <TableCell colSpan={allLangs.length + 6} className="text-center text-muted-foreground py-12">
-                              {search ? "没有匹配的术语" : "此领域暂无术语"}
+                              {search ? t('library.noMatchingTerms') : t('library.noTerms')}
                             </TableCell>
                           </TableRow>
                         )}
@@ -587,13 +573,13 @@ export function TermLibraryContent() {
                   {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>共 {totalTerms} 个术语，第 {page + 1}/{totalPages} 页</span>
+                      <span>{t('library.pagination').replace('{total}', String(totalTerms)).replace('{page}', String(page + 1)).replace('{pages}', String(totalPages))}</span>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage(page - 1)}>
-                          上一页
+                          {t('common.prevPage')}
                         </Button>
                         <Button size="sm" variant="outline" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
-                          下一页
+                          {t('common.nextPage')}
                         </Button>
                       </div>
                     </div>
@@ -601,7 +587,7 @@ export function TermLibraryContent() {
                 </>
               ) : (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <p>请选择一个领域查看术语</p>
+                  <p>{t('library.selectDomain')}</p>
                 </div>
               )}
             </div>
@@ -616,20 +602,20 @@ export function TermLibraryContent() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium">名称</label>
+              <label className="text-sm font-medium">{t('library.domainName')}</label>
               <Input
                 value={newDomainName}
                 onChange={(e) => setNewDomainName(e.target.value)}
-                placeholder="例如：AI/ML、法律、医疗"
+                placeholder={t('library.domainNamePlaceholder')}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateDomain()}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">描述（可选）</label>
+              <label className="text-sm font-medium">{t('library.domainDescOptional')}</label>
               <Input
                 value={newDomainDesc}
                 onChange={(e) => setNewDomainDesc(e.target.value)}
-                placeholder="简要描述此领域"
+                placeholder={t('library.domainDescPlaceholder')}
               />
             </div>
           </div>
@@ -646,36 +632,32 @@ export function TermLibraryContent() {
           <DialogHeader>
             <DialogTitle>{t('library.addTerm')}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium">原文</label>
-              <Input
-                value={newTermSource}
-                onChange={(e) => setNewTermSource(e.target.value)}
-                placeholder="原文术语"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">目标语言</label>
-              <Input
-                value={newTermLang}
-                onChange={(e) => setNewTermLang(e.target.value)}
-                placeholder="例如 zh-CN"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">译文</label>
-              <Input
-                value={newTermTarget}
-                onChange={(e) => setNewTermTarget(e.target.value)}
-                placeholder="译文"
-                onKeyDown={(e) => e.key === "Enter" && handleAddTerm()}
-              />
-            </div>
+          <div className="space-y-2 max-h-80 overflow-auto">
+            {allLanguages.length > 0 ? allLanguages.map((lang) => (
+              <div key={lang.code} className="flex items-center gap-2">
+                <label className="text-sm font-medium w-24 shrink-0 text-right">{lang.name}</label>
+                <Input
+                  value={newTermValues[lang.code] || ""}
+                  onChange={(e) => setNewTermValues((prev) => ({ ...prev, [lang.code]: e.target.value }))}
+                  placeholder={lang.code}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddTerm()}
+                />
+              </div>
+            )) : (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium w-24 shrink-0 text-right">en</label>
+                <Input
+                  value={newTermValues["en"] || ""}
+                  onChange={(e) => setNewTermValues((prev) => ({ ...prev, en: e.target.value }))}
+                  placeholder="en"
+                  onKeyDown={(e) => e.key === "Enter" && handleAddTerm()}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddTerm(false)}>{t('common.cancel')}</Button>
-            <Button onClick={handleAddTerm} disabled={!newTermSource.trim()}>{t('common.save')}</Button>
+            <Button onClick={handleAddTerm} disabled={!Object.values(newTermValues).some((v) => v.trim())}>{t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -686,25 +668,85 @@ export function TermLibraryContent() {
           <DialogHeader>
             <DialogTitle>{t('library.import')}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              支持 CSV/TSV 格式。首列必须为 source，其余列为语言代码（如 zh-CN, en, ja）。
-            </p>
-            <Input
-              type="file"
-              accept=".csv,.tsv,.txt"
-              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-            />
-            {importResult && (
-              <p className={`text-sm ${importResult.includes("失败") || importResult.includes("Error") ? "text-destructive" : "text-green-600"}`}>
-                {importResult}
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowImport(false)}>{t('common.close')}</Button>
-            <Button onClick={handleImport} disabled={!importFile}>{t('library.import')}</Button>
-          </DialogFooter>
+
+          {importResult ? (
+            /* ── Result state ── */
+            <div className="space-y-4">
+              <div className={`rounded-lg p-4 ${
+                importResult.type === "error" ? "bg-destructive/10 border border-destructive/20"
+                  : importResult.type === "warning" ? "bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800"
+                  : "bg-green-50 border border-green-200 dark:bg-green-950/30 dark:border-green-800"
+              }`}>
+                <div className="flex items-start gap-2">
+                  {importResult.type === "error" ? (
+                    <X className="size-5 text-destructive shrink-0 mt-0.5" />
+                  ) : importResult.type === "warning" ? (
+                    <CheckCircle2 className="size-5 text-amber-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <CheckCircle2 className="size-5 text-green-600 shrink-0 mt-0.5" />
+                  )}
+                  <p className={`text-sm whitespace-pre-line ${
+                    importResult.type === "error" ? "text-destructive"
+                      : importResult.type === "warning" ? "text-amber-700 dark:text-amber-400"
+                      : "text-green-700 dark:text-green-400"
+                  }`}>
+                    {importResult.message}
+                  </p>
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => { setImportFile(null); setImportResult(null); }}>
+                  {t('library.importAgain')}
+                </Button>
+                <Button onClick={() => setShowImport(false)}>{t('common.close')}</Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            /* ── Upload state ── */
+            <div className="space-y-4">
+              {/* Format guide */}
+              <div className="rounded-lg bg-muted/50 p-3 space-y-2">
+                <p className="text-sm text-muted-foreground">{t('library.importStepFileDesc')}</p>
+                <p className="text-xs text-muted-foreground/70 font-mono">{t('library.importFormatExample')}</p>
+                <p className="text-xs text-muted-foreground/70">{t('library.importOptionalCols')}</p>
+                <a href="/api/library/import-template" download
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                  <Download className="size-3" />
+                  {t('library.importTemplate')}
+                </a>
+              </div>
+
+              {/* Drop zone */}
+              <label className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors ${
+                importFile ? "border-primary/50 bg-primary/5" : "border-muted-foreground/25 hover:border-primary/40 hover:bg-muted/30"
+              }`}>
+                <input
+                  type="file"
+                  accept=".csv,.tsv,.txt"
+                  className="sr-only"
+                  onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                />
+                {importFile ? (
+                  <>
+                    <Upload className="size-5 text-primary" />
+                    <span className="text-sm font-medium">{t('library.importFileSelected').replace('{name}', importFile.name)}</span>
+                    <span className="text-xs text-muted-foreground">{t('library.importChangeFile')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="size-5 text-muted-foreground/50" />
+                    <span className="text-sm text-muted-foreground">{t('library.importDragDrop')}</span>
+                    <span className="text-xs text-muted-foreground/50">CSV, TSV</span>
+                  </>
+                )}
+              </label>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowImport(false)}>{t('common.close')}</Button>
+                <Button onClick={handleImport} disabled={!importFile}>{t('library.import')}</Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
