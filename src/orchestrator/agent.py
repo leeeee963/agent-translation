@@ -37,6 +37,7 @@ SUPPORTED_EXTENSIONS = [
     ".xliff", ".xlf",
     ".xml",
     ".html", ".htm",
+    ".txt", ".text",
 ]
 from src.utils.paths import get_config_dir
 

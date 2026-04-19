@@ -9,7 +9,7 @@ interface FileUploadSectionProps {
   onFilesChange: (files: TranslationFile[]) => void;
 }
 
-const VALID_EXTENSIONS = [".pptx", ".srt", ".vtt", ".ass", ".docx", ".doc", ".md", ".json", ".yaml", ".yml", ".po", ".pot", ".xliff", ".xlf", ".xml", ".html", ".htm"];
+const VALID_EXTENSIONS = [".pptx", ".srt", ".vtt", ".ass", ".docx", ".doc", ".md", ".json", ".yaml", ".yml", ".po", ".pot", ".xliff", ".xlf", ".xml", ".html", ".htm", ".txt", ".text"];
 
 function getExtension(filename: string) {
   const index = filename.lastIndexOf(".");
@@ -92,7 +92,7 @@ export function FileUploadSection({ files, onFilesChange }: FileUploadSectionPro
       multiple
       onChange={handleChange}
       className="hidden"
-      accept=".pptx,.docx,.doc,.srt,.vtt,.ass,.md,.json,.yaml,.yml,.po,.pot,.xliff,.xlf,.xml,.html,.htm"
+      accept=".pptx,.docx,.doc,.srt,.vtt,.ass,.md,.json,.yaml,.yml,.po,.pot,.xliff,.xlf,.xml,.html,.htm,.txt,.text"
     />
   );
 

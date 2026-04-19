@@ -43,7 +43,7 @@ def _load_review_template() -> str:
 
 
 def _build_marked_review_input(blocks: list[ContentBlock]) -> str:
-    """Build marked input for the review pass using translated text."""
+    """Build marked input for the review pass using the draft translation."""
     parts: list[str] = []
     for block in blocks:
         text = block.translated_text or block.source_text
@@ -425,6 +425,9 @@ class TranslatorAgent:
         if self._review_enabled(review_settings, target_language):
             review_template = _load_review_template()
             review_temperature = float(settings.get("temperature", {}).get("review", 0.3))
+            review_glossary_constraints = glossary.to_constraint_text(
+                target_language=target_language,
+            ) or "No terminology constraints."
             review_total = len(segments)
             review_done = 0
             if progress_callback:
@@ -448,6 +451,7 @@ class TranslatorAgent:
                     target_language_name=LANGUAGE_NAMES_EN.get(target_language.lower(), target_language),
                     template=review_template,
                     language_structural_notes=get_structural_notes(target_language),
+                    glossary_constraints=review_glossary_constraints,
                     temperature=review_temperature,
                 )
                 review_done += 1
@@ -514,6 +518,7 @@ class TranslatorAgent:
         target_language_name: str,
         template: str,
         language_structural_notes: str,
+        glossary_constraints: str,
         temperature: float,
     ) -> list[dict]:
         """Run a naturalness review pass over an already-translated segment.
@@ -530,6 +535,7 @@ class TranslatorAgent:
             source_language_name=source_language_name,
             target_language_name=target_language_name,
             language_structural_notes=language_structural_notes or "",
+            glossary_constraints=glossary_constraints or "No terminology constraints.",
         )
         user_message = _build_marked_review_input(translated_blocks)
 

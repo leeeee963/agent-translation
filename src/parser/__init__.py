@@ -9,6 +9,7 @@ from src.parser.markdown_parser import MarkdownParser
 from src.parser.po_parser import PoParser
 from src.parser.pptx_parser import PptxParser
 from src.parser.srt_parser import SrtParser
+from src.parser.txt_parser import TxtParser
 from src.parser.vtt_parser import VttParser
 from src.parser.xliff_parser import XliffParser
 from src.parser.xml_parser import XmlParser
@@ -29,6 +30,7 @@ _PARSERS: list[BaseParser] = [
     XliffParser(),   # before XmlParser — .xliff/.xlf are more specific
     XmlParser(),
     HtmlParser(),
+    TxtParser(),  # generic plain-text fallback (last among text parsers)
 ]
 
 
@@ -54,5 +56,6 @@ __all__ = [
     "XliffParser",
     "XmlParser",
     "HtmlParser",
+    "TxtParser",
     "get_parser",
 ]

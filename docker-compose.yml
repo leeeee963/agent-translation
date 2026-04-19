@@ -1,0 +1,15 @@
+services:
+  agent-translation:
+    build: .
+    image: agent-translation:latest
+    container_name: agent-translation
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - POE_API_KEY=${POE_API_KEY}
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    restart: unless-stopped

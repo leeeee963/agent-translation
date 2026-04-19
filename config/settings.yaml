@@ -12,7 +12,7 @@ server:
 models:
   terminology: gpt-5.2-instant
   translation: gpt-5.2-instant
-  review: gpt-5.2-instant
+  review: Claude-Sonnet-4.5
   domain_detection: gpt-5.2-instant
   quality_scoring: gpt-5.2-instant
 translation:
@@ -84,7 +84,7 @@ translation:
   temperature:
     terminology: 0.2
     translation: 0.5
-    review: 0.3
+    review: 0.7
     language_detect: 0.1
   naturalness_review:
     enabled: true
@@ -145,3 +145,5 @@ file_processing:
   - .xml
   - .html
   - .htm
+  - .txt
+  - .text

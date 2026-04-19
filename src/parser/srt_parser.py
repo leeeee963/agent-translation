@@ -24,7 +24,9 @@ class SrtParser(BaseParser):
     # parse
     # ------------------------------------------------------------------
     def parse(self, file_path: str) -> ParsedFile:
-        subs = pysrt.open(file_path, encoding="utf-8")
+        # Use utf-8-sig to transparently strip a UTF-8 BOM if present;
+        # otherwise pysrt reads "\ufeff1" as the first index and int() fails.
+        subs = pysrt.open(file_path, encoding="utf-8-sig")
         blocks: list[ContentBlock] = []
         total_words = 0
 

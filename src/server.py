@@ -37,6 +37,7 @@ SUPPORTED_EXTENSIONS = [
     ".xliff", ".xlf",
     ".xml",
     ".html", ".htm",
+    ".txt", ".text",
 ]
 FRONTEND_DIST_DIR = get_frontend_dist_dir()
 CONFIG_DIR = get_config_dir()
