@@ -13,6 +13,7 @@ frontend/dist
 data/*.db
 data/*.db-*
 data/cache
+data/storage
 data/samples
 docs
 tests

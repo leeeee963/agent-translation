@@ -23,7 +23,8 @@ class JobQueue:
         self._queue: asyncio.Queue[dict] | None = None
         self._lock_obj: asyncio.Lock | None = None
         self._jobs: dict[str, dict] = {}
-        self._outputs: dict[str, Path] = {}
+        # Maps "{job_id}/{filename}" -> storage key (e.g., "jobs/abc/output/foo.pptx")
+        self._outputs: dict[str, str] = {}
         self._active = 0
         # Phase 1 intermediate state: job_id -> {parsed, parser, work_dir, job_obj}
         self._phase1_store: dict[str, dict] = {}
@@ -31,6 +32,14 @@ class JobQueue:
         self._glossaries: dict[str, Any] = {}
         # Persistent storage
         self._db = JobDB()
+        self._storage_lazy: Any = None
+
+    @property
+    def storage(self):
+        if self._storage_lazy is None:
+            from src.storage import get_storage
+            self._storage_lazy = get_storage()
+        return self._storage_lazy
 
     def _get_queue(self) -> asyncio.Queue:
         if self._queue is None:
@@ -161,13 +170,18 @@ class JobQueue:
         return False
 
     def delete(self, job_id: str) -> bool:
-        """Permanently delete a job from memory and database."""
+        """Permanently delete a job from memory, database, and storage."""
         self._jobs.pop(job_id, None)
         self._phase1_store.pop(job_id, None)
         self._glossaries.pop(job_id, None)
-        # Clean up output files
-        for key in [k for k in self._outputs if k.startswith(f"{job_id}/") or k == f"_dir_{job_id}"]:
+        # Drop in-memory output mappings
+        for key in [k for k in self._outputs if k.startswith(f"{job_id}/")]:
             self._outputs.pop(key, None)
+        # Wipe storage objects under this job
+        try:
+            self.storage.delete_prefix(f"jobs/{job_id}")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("storage delete_prefix failed for %s: %s", job_id, exc)
         self._db.delete_job(job_id)
         return True
 
@@ -335,7 +349,7 @@ class JobQueue:
         self._db.save_job(job)
 
     @property
-    def outputs(self) -> dict[str, Path]:
+    def outputs(self) -> dict[str, str]:
         return self._outputs
 
     async def _ensure_workers(self) -> None:
@@ -477,11 +491,9 @@ class JobQueue:
                 self._jobs[job_id] = finalized
                 self._persist_final(job_id)
 
-                succeeded = [run for run in finalized["language_runs"] if run["status"] == S.DONE]
-                if not succeeded and finalized["status"] == S.ERROR:
-                    shutil.rmtree(work_dir, ignore_errors=True)
-                else:
-                    self._outputs[f"_dir_{job_id}"] = work_dir
+                # Outputs already uploaded to storage; the local work dir is
+                # purely scratch and can be cleaned up either way.
+                shutil.rmtree(work_dir, ignore_errors=True)
 
         except Exception as exc:
             logger.exception("Job %s failed: %s", job_id, exc)
@@ -569,6 +581,7 @@ class JobQueue:
             self._glossaries.pop(job_id, None)
 
     def _attach_downloads(self, job_id: str, payload: dict) -> None:
+        """Upload finalized translation outputs to storage and record their keys."""
         for run in payload.get("language_runs", []):
             output_file = run.get("output_file")
             if run.get("status") != S.DONE or not output_file:
@@ -577,16 +590,28 @@ class JobQueue:
             if not path.exists():
                 continue
             filename = path.name
+            storage_key = f"jobs/{job_id}/output/{filename}"
+            try:
+                self.storage.upload_file(storage_key, path)
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("Failed to upload %s: %s", storage_key, exc)
+                continue
             run["download_url"] = f"/api/download/{job_id}/{filename}"
-            self._outputs[f"{job_id}/{filename}"] = path
+            self._outputs[f"{job_id}/{filename}"] = storage_key
 
             draft_file = run.get("draft_output_file")
             if draft_file:
                 draft_path = Path(draft_file)
                 if draft_path.exists():
                     draft_filename = draft_path.name
+                    draft_key = f"jobs/{job_id}/output/{draft_filename}"
+                    try:
+                        self.storage.upload_file(draft_key, draft_path)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.exception("Failed to upload draft %s: %s", draft_key, exc)
+                        continue
                     run["draft_download_url"] = f"/api/download/{job_id}/{draft_filename}"
-                    self._outputs[f"{job_id}/{draft_filename}"] = draft_path
+                    self._outputs[f"{job_id}/{draft_filename}"] = draft_key
 
     def _build_legacy_result(self, job_id: str, payload: dict) -> dict:
         outputs: list[dict] = []

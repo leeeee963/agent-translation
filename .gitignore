@@ -15,6 +15,7 @@ frontend/dist/
 
 # Data (runtime generated)
 data/cache/
+data/storage/
 data/*.db
 *.db-shm
 *.db-wal

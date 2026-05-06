@@ -12,17 +12,21 @@ import os
 import secrets
 import shutil
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 import yaml
 
+from src.db import dispose_engine, init_db
 from src.models.task import TaskStatus as S
 from src.queue.manager import JobQueue
+from src.storage import LocalStorage, get_storage, reset_storage
+from src.terminology.library_db import seed_default_domains
 from src.utils.file_utils import get_temp_dir, validate_file
 from src.utils.paths import get_config_dir, get_frontend_dist_dir
 from src.utils.style_loader import list_styles as load_style_configs
@@ -65,7 +69,20 @@ CONFIG_DIR = get_config_dir()
 PROMPTS_DIR = CONFIG_DIR / "prompts"
 UNIFIED_PROMPT_ID = "translator"
 
-app = FastAPI(title="多语种翻译 Agent", version="2.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: create tables, seed default domains, eagerly init storage
+    init_db()
+    seed_default_domains()
+    storage = get_storage()
+    logger.info("Storage initialized: %s", type(storage).__name__)
+    yield
+    # Shutdown
+    dispose_engine()
+    reset_storage()
+
+
+app = FastAPI(title="多语种翻译 Agent", version="2.0.0", lifespan=lifespan)
 
 # ── Auth: shared password gate ───────────────────────────────────────
 ACCESS_PASSWORD = os.getenv("ACCESS_PASSWORD", "")
@@ -512,17 +529,30 @@ async def get_glossary(job_id: str) -> dict:
 # ── File download ─────────────────────────────────────────────────────
 
 @app.get("/api/download/{job_id}/{filename}")
-async def download(job_id: str, filename: str) -> FileResponse:
-    """Download a translated file."""
+async def download(job_id: str, filename: str):
+    """Download a translated file via the configured storage backend."""
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="无效的文件名")
 
     key = f"{job_id}/{filename}"
-    path = job_queue.outputs.get(key)
-    if not path or not path.exists():
+    storage_key = job_queue.outputs.get(key)
+    if not storage_key:
         raise HTTPException(status_code=404, detail="文件不存在或已过期")
 
-    return FileResponse(path, filename=filename)
+    storage = get_storage()
+    if not storage.exists(storage_key):
+        raise HTTPException(status_code=404, detail="文件不存在或已过期")
+
+    if storage.is_redirect_url():
+        # S3/R2: send a presigned URL that the browser follows directly
+        url = storage.get_url(storage_key, filename=filename)
+        return RedirectResponse(url, status_code=302)
+
+    # LocalStorage: stream the file via FastAPI
+    if isinstance(storage, LocalStorage):
+        return FileResponse(storage.local_path(storage_key), filename=filename)
+
+    raise HTTPException(status_code=500, detail="未知的存储后端")
 
 
 

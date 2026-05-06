@@ -57,19 +57,53 @@ API Key 获取地址：https://sudocode.us/
 
 ### 部署到 Zeabur
 
-1. 把项目 push 到 GitHub
-2. 在 Zeabur Dashboard 新建 Project → Add Service → Deploy from GitHub，选这个仓库
-3. 配置环境变量（必填）：
-   - `SUDO_API_KEY` — LLM 密钥
-   - `ACCESS_PASSWORD` — 前端登录页的密码
-   - `SESSION_SECRET` — 用 `python -c "import secrets; print(secrets.token_urlsafe(32))"` 生成一个固定值
-4. Zeabur 自动检测 `Dockerfile` 并构建部署，注入 `$PORT`
-5. 部署完成后绑定域名，访问域名 → 登录页 → 输密码 → 开始用
+#### 1. 准备 GitHub repo
 
-### ⚠️ 当前限制（首次上线版）
+把项目 push 到 GitHub（Zeabur 会从 GitHub 拉取代码部署）。
 
-- **数据每次重启清零**：历史任务和术语库都存在容器内的 SQLite，Zeabur 容器无状态，重新部署或重启后清空。后续会迁到 Postgres 解决。
-- **上传 / 下载文件**：源文件和翻译结果存在容器临时目录，重启后下载链接失效。建议翻译完即下载。
+#### 2. 创建 Postgres 数据库
+
+- 在 Zeabur Project 内 **Add Service → Marketplace → Postgres**
+- 部署完后会自动产生一个 `DATABASE_URL` 环境变量
+
+#### 3. 创建对象存储
+
+任选一个 S3 兼容服务（推荐 **Cloudflare R2**：免费 10 GB + 零出口流量费）：
+
+| 服务 | endpoint 示例 |
+|---|---|
+| Cloudflare R2 | `https://<account-id>.r2.cloudflarestorage.com` |
+| AWS S3 | （留空即可，默认 AWS） |
+| Backblaze B2 | `https://s3.<region>.backblazeb2.com` |
+
+去对应控制台创建一个 bucket，拿到 access key / secret key。
+
+#### 4. 部署 Web Service
+
+- **Add Service → Deploy from GitHub** → 选这个 repo
+- Zeabur 自动识别 `Dockerfile`，开始 build
+- 在 **Variables** 标签配置环境变量：
+
+| 变量 | 值 | 必填 |
+|---|---|---|
+| `SUDO_API_KEY` | LLM 密钥 | ✅ |
+| `ACCESS_PASSWORD` | 前端登录密码 | ✅ |
+| `SESSION_SECRET` | `python -c "import secrets; print(secrets.token_urlsafe(32))"` 生成 | ✅ |
+| `DATABASE_URL` | Postgres 连接串（Zeabur 会自动注入，或手动填）| ✅ |
+| `STORAGE_BACKEND` | `s3` | ✅ |
+| `S3_BUCKET` | 你的 bucket 名 | ✅ |
+| `S3_ENDPOINT_URL` | 见上表 | R2/B2 必填，AWS 留空 |
+| `S3_ACCESS_KEY` | bucket 凭证 | ✅ |
+| `S3_SECRET_KEY` | bucket 凭证 | ✅ |
+| `S3_REGION` | 默认 `us-east-1` | 可选 |
+
+#### 5. 绑定域名
+
+部署成功后到 **Networking** 标签生成 `xxx.zeabur.app` 域名，或绑自己的域名。
+
+#### 6. 验证
+
+打开域名 → 登录页 → 输密码 → 上传一个文件翻译一次 → 重启 web service → 历史任务和术语库都还在 ✓
 
 ## 支持格式
 
