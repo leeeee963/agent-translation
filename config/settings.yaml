@@ -10,11 +10,11 @@ llm_cache:
 server:
   max_job_workers: 4
 models:
-  terminology: gpt-5.5
-  translation: gpt-5.5
-  review: gpt-5.5
-  domain_detection: gpt-5.5
-  quality_scoring: gpt-5.5
+  terminology: gpt-5.4-mini
+  translation: gpt-5.4-mini
+  review: gpt-5.4-mini
+  domain_detection: gpt-5.4-mini
+  quality_scoring: gpt-5.4-mini
 translation:
   max_segment_tokens: 2600
   max_concurrent_languages_per_job: 5

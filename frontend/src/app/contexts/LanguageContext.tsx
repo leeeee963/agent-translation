@@ -10,7 +10,7 @@ interface LanguageContextType {
 
 const translations: Record<string, Record<AppLanguage, string>> = {
   // Navigation
-  'nav.tasks': { en: 'Translation Platform', zh: '多语言翻译平台' },
+  'nav.tasks': { en: 'Glossa', zh: 'Glossa' },
   'nav.newTask': { en: 'New Translation', zh: '新建翻译' },
   'nav.translation': { en: 'Translation', zh: '翻译' },
   'nav.create': { en: 'New Translation', zh: '新建翻译' },

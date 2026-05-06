@@ -83,7 +83,7 @@ async def lifespan(app: FastAPI):
     reset_storage()
 
 
-app = FastAPI(title="多语种翻译 Agent", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="Glossa", version="2.0.0", lifespan=lifespan)
 
 # ── Auth: shared password gate ───────────────────────────────────────
 ACCESS_PASSWORD = os.getenv("ACCESS_PASSWORD", "")

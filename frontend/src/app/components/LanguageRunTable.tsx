@@ -6,7 +6,31 @@ import type { LanguageRun } from "../types/translation";
 import { useLanguage } from "../contexts/LanguageContext";
 import { tokenDiff } from "../utils/diffUtils";
 import { downloadFile } from "../utils/download";
+import { formatDuration } from "../utils/duration";
 import { isActive, statusLabel, getStatusColor, exportReviewChanges, isReviewChanged } from "../utils/jobStatus";
+
+// ── Timing display: elapsed + ETA, picks up live updates as run snapshot polls
+function RunTiming({ run }: { run: LanguageRun }) {
+  const { language } = useLanguage();
+  const elapsed = run.elapsed_seconds;
+  const eta = run.eta_seconds;
+  if (elapsed == null && (eta == null || eta <= 0.5)) return null;
+
+  const parts: string[] = [];
+  if (elapsed != null && elapsed >= 1) {
+    parts.push(language === "zh" ? `已用 ${formatDuration(elapsed)}` : `${formatDuration(elapsed)} elapsed`);
+  }
+  if (eta != null && eta > 0.5) {
+    parts.push(language === "zh" ? `剩 ${formatDuration(eta)}` : `${formatDuration(eta)} left`);
+  }
+  if (parts.length === 0) return null;
+
+  return (
+    <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap flex-shrink-0">
+      {parts.join(" · ")}
+    </span>
+  );
+}
 
 // ── Inline diff display ─────────────────────────────────────────────
 
@@ -63,6 +87,7 @@ export function LanguageRunTable({ runs, sourceFilename }: { runs: LanguageRun[]
                           ? `${run.segments_done}/${run.segments_total}`
                           : `${Math.round(run.percent)}%`}
                       </span>
+                      <RunTiming run={run} />
                     </>
                   )}
                   {run.error_message && (

@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
+import time
 import uuid
 from pathlib import Path
 from typing import Callable, Literal
@@ -916,6 +917,7 @@ class Orchestrator:
         unit_label: str | None = None,
         current_range: str | None = None,
     ) -> None:
+        prev_status = run.status
         run.set_status(
             status,
             detail,
@@ -928,6 +930,47 @@ class Orchestrator:
             unit_label=unit_label,
             current_range=current_range,
         )
+        Orchestrator._update_timing(run, prev_status)
+
+    @staticmethod
+    def _update_timing(run: TranslationTask, prev_status: TaskStatus) -> None:
+        """Maintain stage_started_at / elapsed_seconds / seconds_per_segment / eta_seconds."""
+        terminal = (TaskStatus.DONE, TaskStatus.ERROR, TaskStatus.CANCELLED)
+        if run.status in terminal:
+            run.eta_seconds = 0.0 if run.status == TaskStatus.DONE else None
+            if run.stage_started_at is not None:
+                run.elapsed_seconds = max(0.0, time.time() - run.stage_started_at)
+            return
+
+        # Reset clock on stage transition
+        if run.status != prev_status or run.stage_started_at is None:
+            run.stage_started_at = time.time()
+            run.elapsed_seconds = 0.0
+            run.seconds_per_segment = None
+            run.eta_seconds = None
+            return
+
+        elapsed = time.time() - (run.stage_started_at or time.time())
+        run.elapsed_seconds = max(0.0, elapsed)
+
+        # Only timed stages with segment progress give a usable ETA
+        timed_stages = (TaskStatus.TRANSLATING, TaskStatus.REVIEWING)
+        if run.status not in timed_stages:
+            run.seconds_per_segment = None
+            run.eta_seconds = None
+            return
+
+        done = max(0, run.segments_done)
+        total = max(0, run.segments_total)
+        if done <= 0 or total <= 0:
+            run.seconds_per_segment = None
+            run.eta_seconds = None
+            return
+
+        spp = elapsed / done
+        run.seconds_per_segment = spp
+        remaining = max(0, total - done)
+        run.eta_seconds = max(0.0, remaining * spp)
 
     @staticmethod
     def _update_job(

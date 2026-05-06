@@ -41,6 +41,11 @@ export interface LanguageRun {
   draft_download_url?: string;
   error_message: string;
   review_changes?: ReviewChange[];
+  // Timing & ETA
+  stage_started_at?: number | null;
+  elapsed_seconds?: number | null;
+  seconds_per_segment?: number | null;
+  eta_seconds?: number | null;
 }
 
 /** Backend glossary exports shape */

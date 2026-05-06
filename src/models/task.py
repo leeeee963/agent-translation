@@ -44,6 +44,15 @@ class TranslationTask(BaseModel):
     review_changes: list[dict] = Field(default_factory=list)
     draft_output_file: str = ""
     draft_download_url: str = ""
+    # ── Timing & ETA (filled by orchestrator) ──
+    # Unix timestamp when the current stage started (None = not started or terminal)
+    stage_started_at: Optional[float] = None
+    # Seconds elapsed in the current stage so far
+    elapsed_seconds: Optional[float] = None
+    # Average seconds per completed segment in the current stage
+    seconds_per_segment: Optional[float] = None
+    # Estimated remaining seconds for the current stage
+    eta_seconds: Optional[float] = None
 
     def set_status(
         self,
