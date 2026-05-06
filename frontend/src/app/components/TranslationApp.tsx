@@ -3,12 +3,10 @@ import { FileUploadSection } from "./FileUploadSection";
 import { LanguageSelector } from "./LanguageSelector";
 import { TaskWorkbenchSection } from "./TaskWorkbenchSection";
 import { TermLibraryContent } from "./TermLibraryPage";
-import { SettingsDialog } from "./SettingsDialog";
 import type { TranslationFile, Language, Job, LibraryDomain } from "../types/translation";
 import { submitJobs, fetchJobs, cancelJob, deleteJobs, fetchLibraryDomains } from "../api";
 import { Button } from "./ui/button";
 import {
-  Settings,
   LibraryBig, Moon, Sun, Languages,
   FilePlus2, ClipboardList, X, Loader2,
 } from "lucide-react";
@@ -38,9 +36,6 @@ export function TranslationApp() {
   const [libraryDomains, setLibraryDomains] = useState<LibraryDomain[]>([]);
   const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([]);
 
-  // ── Settings state ──
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<'api' | 'prompt'>('api');
 
   // ── Layout state ──
   const [showLibrary, setShowLibrary] = useState(false);
@@ -101,11 +96,6 @@ export function TranslationApp() {
 
   const handleGlossaryConfirmed = async () => { await loadJobs(); };
 
-  const openSettings = (tab: 'api' | 'prompt') => {
-    setSettingsTab(tab);
-    setSettingsOpen(true);
-  };
-
   const completedFiles = files.filter((f) => f.uploadStatus === 'completed').length;
   const canStartTranslation = completedFiles > 0 && selectedLanguages.length > 0 && !isTranslating;
 
@@ -125,7 +115,6 @@ export function TranslationApp() {
         bottomItems={[
           { icon: theme === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />, label: theme === 'dark' ? t('theme.light') : t('theme.dark'), onClick: toggleTheme },
           { icon: <Languages className="size-5" />, label: language === 'en' ? '中文' : 'English', onClick: () => setLanguage(language === 'en' ? 'zh' : 'en') },
-          { icon: <Settings className="size-5" />, label: t('settings.title'), onClick: () => openSettings('api') },
         ]}
       />
 
@@ -240,12 +229,6 @@ export function TranslationApp() {
         }
       />
 
-      {/* Settings Dialog */}
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        initialTab={settingsTab}
-      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { Language, Job, PromptConfig, GlossaryTerm, LibraryDomain, LibraryTerm } from "./types/translation";
+import type { Language, Job, GlossaryTerm, LibraryDomain, LibraryTerm } from "./types/translation";
 
 const AUTH_REQUIRED_PATHS = new Set(["/api/login", "/api/auth-status"]);
 
@@ -50,10 +50,6 @@ export async function login(password: string): Promise<void> {
 export async function fetchLanguages(): Promise<Language[]> {
   const data = await request<{ languages: Language[] }>("/api/languages");
   return data.languages || [];
-}
-
-export async function fetchPrompt(): Promise<PromptConfig> {
-  return request<PromptConfig>("/api/prompt");
 }
 
 export async function submitJobs(
@@ -126,16 +122,6 @@ export async function confirmGlossary(
       update_library_term_ids: updateLibraryTermIds ?? null,
     }),
   });
-}
-
-export interface LLMConfig {
-  api_key_masked: string;
-  base_url: string;
-  model: string;
-}
-
-export async function fetchLLMConfig(): Promise<LLMConfig> {
-  return request<LLMConfig>("/api/llm-config");
 }
 
 // ── Terminology Library API ──────────────────────────────────────────

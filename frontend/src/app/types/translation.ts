@@ -147,15 +147,6 @@ export interface Job {
   completed_at?: string | null;
 }
 
-/** Prompt config from backend */
-export interface PromptConfig {
-  id: string;
-  label: string;
-  path: string;
-  type: string;
-  content: string;
-}
-
 /** UI-level translation task (mapped from backend Job language_runs) */
 export interface TranslationTask {
   id: string;

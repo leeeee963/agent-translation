@@ -66,8 +66,6 @@ SUPPORTED_EXTENSIONS = [
 ]
 FRONTEND_DIST_DIR = get_frontend_dist_dir()
 CONFIG_DIR = get_config_dir()
-PROMPTS_DIR = CONFIG_DIR / "prompts"
-UNIFIED_PROMPT_ID = "translator"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -203,36 +201,6 @@ class BatchDeleteRequest(BaseModel):
     term_ids: list[int]
 
 
-def _build_prompt_registry() -> dict[str, dict[str, Any]]:
-    return {
-        UNIFIED_PROMPT_ID: {
-            "label": "统一翻译 Prompt",
-            "path": PROMPTS_DIR / "translator_unified.md",
-            "type": "markdown",
-        }
-    }
-
-
-def _get_prompt_config(config_id: str) -> dict[str, Any]:
-    registry = _build_prompt_registry()
-    item = registry.get(config_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Prompt 配置不存在")
-    return item
-
-
-def _serialize_prompt_config(config_id: str, item: dict[str, Any]) -> dict[str, Any]:
-    path = item["path"]
-    return {
-        "id": config_id,
-        "label": item["label"],
-        "path": str(path.relative_to(CONFIG_DIR.parent)),
-        "type": item["type"],
-        "content": path.read_text(encoding="utf-8"),
-    }
-
-
-
 # ── Static files ─────────────────────────────────────────────────────
 
 def _frontend_index_path() -> Path:
@@ -301,67 +269,6 @@ async def api_list_styles() -> dict:
             {"key": k, "name": v.get("name", k), "description": v.get("description", "")}
             for k, v in styles.items()
         ]
-    }
-
-
-@app.get("/api/prompt-configs")
-async def list_prompt_configs() -> dict:
-    registry = _build_prompt_registry()
-    items = []
-    for config_id, item in registry.items():
-        path = item["path"]
-        items.append(
-            {
-                "id": config_id,
-                "label": item["label"],
-                "path": str(path.relative_to(CONFIG_DIR.parent)),
-                "type": item["type"],
-            }
-        )
-    return {"items": items}
-
-
-@app.get("/api/prompt-configs/{config_id}")
-async def get_prompt_config(config_id: str) -> dict:
-    item = _get_prompt_config(config_id)
-    path = item["path"]
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="Prompt 文件不存在")
-    return _serialize_prompt_config(config_id, item)
-
-
-@app.get("/api/prompt")
-async def get_unified_prompt() -> dict:
-    item = _get_prompt_config(UNIFIED_PROMPT_ID)
-    path = item["path"]
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="统一 Prompt 文件不存在")
-    return _serialize_prompt_config(UNIFIED_PROMPT_ID, item)
-
-
-# ── LLM config endpoints ─────────────────────────────────────────────
-
-@app.get("/api/llm-config")
-async def get_llm_config() -> dict:
-    with open(cfg_path, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f) or {}
-    sudo_cfg = cfg.get("sudo", {})
-    models_cfg = cfg.get("models", {})
-    raw_key = sudo_cfg.get("api_key", "")
-    # Resolve env var placeholder (e.g. ${SUDO_API_KEY})
-    if raw_key.startswith("${") and raw_key.endswith("}"):
-        raw_key = os.getenv(raw_key[2:-1], "")
-    # Mask the key: show only last 4 chars
-    if raw_key and raw_key != "${SUDO_API_KEY}" and len(raw_key) > 4:
-        masked = "•" * (len(raw_key) - 4) + raw_key[-4:]
-    else:
-        masked = raw_key
-    # All tasks share the same model; just surface translation model as representative
-    model = models_cfg.get("translation", "gpt-5.5")
-    return {
-        "api_key_masked": masked,
-        "base_url": sudo_cfg.get("base_url", "https://sudocode.us/v1"),
-        "model": model,
     }
 
 
