@@ -8,17 +8,17 @@
 
 ## Tech Stack
 
-- **Backend:** Python 3.11+, FastAPI, Pydantic 2.x, httpx (Poe API)
+- **Backend:** Python 3.11+, FastAPI, Pydantic 2.x, httpx (SudoCode OpenAI-compatible API)
 - **Frontend:** React 18 + TypeScript, Vite, Tailwind CSS 4, Radix UI
 - Frontend builds to `frontend/dist/` and is served by FastAPI as static files
 - After making frontend changes, always verify the build succeeds with `cd frontend && npm run build`
 
 ## How to Run
 
-- **User launch:** `./start.sh` (Mac) or `start.bat` (Windows) — auto-installs deps, starts server, opens browser
-- **Dev server:** `scripts/run_server.sh` (starts server on port 8000)
-- **Backend only:** `python -m uvicorn src.server:app --reload --port 8000`
-- **Frontend dev:** `cd frontend && npm run dev` (proxies API to localhost:8000)
+- **Backend (dev):** `python -m uvicorn src.server:app --reload --port 8000`
+- **Frontend (dev):** `cd frontend && npm run dev` (proxies API to localhost:8000)
+- **Frontend build:** `cd frontend && npm run build` — outputs to `frontend/dist/`, served by FastAPI as static files
+- **Production:** `python -m uvicorn src.server:app --host 0.0.0.0 --port $PORT`
 - **Tests:** `pytest` (test framework configured but tests/ is currently empty)
 
 ## Translation & Prompts
@@ -32,7 +32,6 @@
 - `src/` — Python backend (FastAPI server, translation engine, parsers, terminology)
 - `frontend/` — React/TypeScript web UI
 - `config/` — settings.yaml, prompt templates, and translation style definitions
-- `data/` — runtime data (databases, cache, samples)
-- `scripts/` — build scripts, packaging configs, and server launcher
+- `data/` — runtime data (databases, cache) — gitignored
 - `docs/` — documentation and prototypes
 - `tests/` — test suite

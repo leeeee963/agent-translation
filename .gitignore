@@ -15,14 +15,20 @@ frontend/dist/
 
 # Data (runtime generated)
 data/cache/
+data/*.db
 *.db-shm
 *.db-wal
+
+# Logs
+logs/
+*.log
 
 # Environment
 .env
 
 # OS
 .DS_Store
+**/.DS_Store
 
 # IDE
 .idea/
@@ -31,5 +37,5 @@ data/cache/
 
 # Claude Code
 .agents/
-.claude/skills/
+.claude/
 skills-lock.json

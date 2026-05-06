@@ -149,9 +149,9 @@ export function TranslationApp() {
               </div>
             }
           >
-            <div className="p-4 flex flex-col gap-3 h-full">
+            <div className="p-4 flex flex-col gap-3 min-h-full">
               {/* File Upload */}
-              <div className="flex-[2] flex flex-col bg-muted/30 rounded-lg px-4 py-4 min-h-0">
+              <div className="flex-[2] shrink-0 flex flex-col bg-muted/30 rounded-lg px-4 py-4 min-h-[260px]">
                 <div className="text-xs font-medium text-muted-foreground mb-1.5">{t('upload.title') || '上传文件'}</div>
                 <div className="flex-1 flex min-h-0">
                   <FileUploadSection files={files} onFilesChange={setFiles} />
@@ -159,7 +159,7 @@ export function TranslationApp() {
               </div>
 
               {/* Domain Selection */}
-              <div className="flex-1 bg-muted/30 rounded-lg px-4 py-4">
+              <div className="flex-1 shrink-0 bg-muted/30 rounded-lg px-4 py-4">
                 <div className="text-xs font-medium text-muted-foreground mb-3">{t('domain.select')}</div>
                 {libraryDomains.length > 0 ? (
                   <>
@@ -198,7 +198,7 @@ export function TranslationApp() {
               </div>
 
               {/* Language Selection */}
-              <div className="flex-1 bg-muted/30 rounded-lg px-4 py-4">
+              <div className="flex-1 shrink-0 bg-muted/30 rounded-lg px-4 py-4">
                 <LanguageSelector
                   selectedLanguages={selectedLanguages}
                   onLanguagesChange={setSelectedLanguages}

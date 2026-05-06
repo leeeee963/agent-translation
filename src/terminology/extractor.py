@@ -6,7 +6,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from src.llm.poe_client import get_client
+from src.llm.sudo_client import get_client
 from src.models.glossary import GlossaryTerm
 
 logger = logging.getLogger(__name__)

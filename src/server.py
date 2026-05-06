@@ -9,14 +9,16 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 import shutil
 import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel
+from starlette.middleware.sessions import SessionMiddleware
 import yaml
 
 from src.models.task import TaskStatus as S
@@ -27,6 +29,25 @@ from src.utils.style_loader import list_styles as load_style_configs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def _load_dotenv() -> None:
+    """Load `.env` from the project root into os.environ (does not overwrite existing values)."""
+    env_file = Path(__file__).resolve().parents[1] / ".env"
+    if not env_file.exists():
+        return
+    for raw in env_file.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and not os.getenv(key):
+            os.environ[key] = value
+
+
+_load_dotenv()
 
 SUPPORTED_EXTENSIONS = [
     ".pptx", ".srt", ".vtt", ".ass", ".docx", ".doc",
@@ -46,6 +67,68 @@ UNIFIED_PROMPT_ID = "translator"
 
 app = FastAPI(title="多语种翻译 Agent", version="2.0.0")
 
+# ── Auth: shared password gate ───────────────────────────────────────
+ACCESS_PASSWORD = os.getenv("ACCESS_PASSWORD", "")
+_SESSION_SECRET = os.getenv("SESSION_SECRET") or secrets.token_urlsafe(32)
+if not ACCESS_PASSWORD:
+    logger.warning(
+        "ACCESS_PASSWORD is not set — every /api/* request will return 401. "
+        "Set ACCESS_PASSWORD in .env to enable login."
+    )
+
+PUBLIC_API_PATHS = {"/api/login", "/api/auth-status"}
+
+
+# Note: starlette's add_middleware prepends — the LAST add_middleware call
+# becomes the OUTERMOST middleware. SessionMiddleware must be added AFTER
+# auth_gate so it wraps auth_gate and injects `request.session` first.
+@app.middleware("http")
+async def auth_gate(request: Request, call_next):
+    path = request.url.path
+    if not path.startswith("/api/"):
+        return await call_next(request)
+    if path in PUBLIC_API_PATHS:
+        return await call_next(request)
+    if not request.session.get("authenticated"):
+        return JSONResponse({"detail": "未登录"}, status_code=401)
+    return await call_next(request)
+
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=_SESSION_SECRET,
+    session_cookie="agent_translation_session",
+    max_age=60 * 60 * 24 * 7,  # 7 days
+    same_site="lax",
+)
+
+
+class LoginRequest(BaseModel):
+    password: str
+
+
+@app.post("/api/login")
+async def login(request: Request, payload: LoginRequest) -> dict:
+    if not ACCESS_PASSWORD:
+        raise HTTPException(
+            status_code=503,
+            detail="服务端未配置 ACCESS_PASSWORD，无法登录",
+        )
+    # Constant-time comparison to avoid timing attacks
+    if not secrets.compare_digest(payload.password, ACCESS_PASSWORD):
+        raise HTTPException(status_code=401, detail="密码错误")
+    request.session["authenticated"] = True
+    return {"success": True}
+
+
+@app.get("/api/auth-status")
+async def auth_status(request: Request) -> dict:
+    return {
+        "authenticated": bool(request.session.get("authenticated")),
+        "configured": bool(ACCESS_PASSWORD),
+    }
+
+
 cfg_path = CONFIG_DIR / "settings.yaml"
 if cfg_path.exists():
     with open(cfg_path, encoding="utf-8") as f:
@@ -57,16 +140,6 @@ else:
 job_queue = JobQueue(
     max_workers=int(_SERVER_CFG.get("server", {}).get("max_job_workers", 4))
 )
-
-
-class PromptConfigUpdate(BaseModel):
-    content: str
-
-
-class LLMConfigUpdate(BaseModel):
-    api_key: Optional[str] = None
-    base_url: Optional[str] = None
-    model: Optional[str] = None  # sets all task models at once
 
 
 class GlossaryTermPatch(BaseModel):
@@ -237,21 +310,6 @@ async def get_prompt_config(config_id: str) -> dict:
     return _serialize_prompt_config(config_id, item)
 
 
-@app.put("/api/prompt-configs/{config_id}")
-async def update_prompt_config(
-    config_id: str,
-    payload: PromptConfigUpdate,
-) -> dict:
-    item = _get_prompt_config(config_id)
-    path = item["path"]
-    path.write_text(payload.content, encoding="utf-8")
-    return {
-        "success": True,
-        "id": config_id,
-        "label": item["label"],
-    }
-
-
 @app.get("/api/prompt")
 async def get_unified_prompt() -> dict:
     item = _get_prompt_config(UNIFIED_PROMPT_ID)
@@ -261,63 +319,30 @@ async def get_unified_prompt() -> dict:
     return _serialize_prompt_config(UNIFIED_PROMPT_ID, item)
 
 
-@app.put("/api/prompt")
-async def update_unified_prompt(payload: PromptConfigUpdate) -> dict:
-    item = _get_prompt_config(UNIFIED_PROMPT_ID)
-    path = item["path"]
-    path.write_text(payload.content, encoding="utf-8")
-    return {
-        "success": True,
-        "id": UNIFIED_PROMPT_ID,
-        "label": item["label"],
-    }
-
-
 # ── LLM config endpoints ─────────────────────────────────────────────
 
 @app.get("/api/llm-config")
 async def get_llm_config() -> dict:
     with open(cfg_path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f) or {}
-    poe_cfg = cfg.get("poe", {})
+    sudo_cfg = cfg.get("sudo", {})
     models_cfg = cfg.get("models", {})
-    raw_key = poe_cfg.get("api_key", "")
-    # Resolve env var placeholder (e.g. ${POE_API_KEY})
+    raw_key = sudo_cfg.get("api_key", "")
+    # Resolve env var placeholder (e.g. ${SUDO_API_KEY})
     if raw_key.startswith("${") and raw_key.endswith("}"):
         raw_key = os.getenv(raw_key[2:-1], "")
     # Mask the key: show only last 4 chars
-    if raw_key and raw_key != "${POE_API_KEY}" and len(raw_key) > 4:
+    if raw_key and raw_key != "${SUDO_API_KEY}" and len(raw_key) > 4:
         masked = "•" * (len(raw_key) - 4) + raw_key[-4:]
     else:
         masked = raw_key
     # All tasks share the same model; just surface translation model as representative
-    model = models_cfg.get("translation", "GPT-4o")
+    model = models_cfg.get("translation", "gpt-5.5")
     return {
         "api_key_masked": masked,
-        "base_url": poe_cfg.get("base_url", "https://api.poe.com/v1"),
+        "base_url": sudo_cfg.get("base_url", "https://sudocode.us/v1"),
         "model": model,
     }
-
-
-@app.put("/api/llm-config")
-async def update_llm_config(payload: LLMConfigUpdate) -> dict:
-    with open(cfg_path, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f) or {}
-    if payload.api_key is not None:
-        cfg.setdefault("poe", {})["api_key"] = payload.api_key
-    if payload.base_url is not None:
-        cfg.setdefault("poe", {})["base_url"] = payload.base_url
-    if payload.model is not None:
-        cfg["models"] = {k: payload.model for k in cfg.get("models", {}).keys()} or {
-            "terminology": payload.model,
-            "translation": payload.model,
-            "review": payload.model,
-            "domain_detection": payload.model,
-            "quality_scoring": payload.model,
-        }
-    with open(cfg_path, "w", encoding="utf-8") as f:
-        yaml.dump(cfg, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
-    return {"success": True}
 
 
 # ── Job queue endpoints ───────────────────────────────────────────────
@@ -694,7 +719,9 @@ async def frontend_routes(full_path: str):
 
 def main() -> None:
     import uvicorn
-    uvicorn.run("src.server:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", "8000"))
+    reload = os.getenv("RELOAD", "").lower() in ("1", "true", "yes")
+    uvicorn.run("src.server:app", host="0.0.0.0", port=port, reload=reload)
 
 
 if __name__ == "__main__":

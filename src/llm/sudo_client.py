@@ -1,8 +1,7 @@
-"""Poe API client for calling ChatGPT-4o.
+"""SudoCode API client for OpenAI-compatible chat completions.
 
-Poe provides an OpenAI-compatible API at https://api.poe.com/v1.
-Configure via environment variable POE_API_KEY or config/settings.yaml.
-Get your API key at: https://poe.com/api/keys
+SudoCode provides an OpenAI-compatible API at https://sudocode.us/v1.
+Configure via environment variable SUDO_API_KEY or config/settings.yaml.
 """
 
 from __future__ import annotations
@@ -30,26 +29,26 @@ def _load_config() -> dict[str, Any]:
     return {}
 
 
-class PoeClient:
-    """Async wrapper around Poe's OpenAI-compatible API."""
+class SudoClient:
+    """Async wrapper around SudoCode's OpenAI-compatible API."""
 
     def __init__(
         self,
         api_key: str | None = None,
-        base_url: str = "https://api.poe.com/v1",
+        base_url: str = "https://sudocode.us/v1",
         timeout: int = 120,
         max_retries: int = 3,
         retry_delay: float = 2.0,
     ):
         cfg = _load_config()
-        poe_cfg = cfg.get("poe", {})
-        self.api_key = api_key or os.getenv("POE_API_KEY") or poe_cfg.get("api_key", "")
-        self.base_url = base_url or poe_cfg.get("base_url", "https://api.poe.com/v1")
-        self.timeout = timeout or poe_cfg.get("timeout", 120)
-        self.max_retries = max_retries or poe_cfg.get("max_retries", 3)
-        self.retry_delay = retry_delay or poe_cfg.get("retry_delay", 2.0)
+        sudo_cfg = cfg.get("sudo", {})
+        self.api_key = api_key or os.getenv("SUDO_API_KEY") or sudo_cfg.get("api_key", "")
+        self.base_url = base_url or sudo_cfg.get("base_url", "https://sudocode.us/v1")
+        self.timeout = timeout or sudo_cfg.get("timeout", 120)
+        self.max_retries = max_retries or sudo_cfg.get("max_retries", 3)
+        self.retry_delay = retry_delay or sudo_cfg.get("retry_delay", 2.0)
         self._models: dict[str, str] = cfg.get("models", {})
-        self._default_model = "GPT-4o"
+        self._default_model = "gpt-5.5"
         self._http_client: httpx.AsyncClient | None = None
         cache_cfg = cfg.get("llm_cache", {})
         self._cache_enabled = bool(cache_cfg.get("enabled", True))
@@ -59,10 +58,9 @@ class PoeClient:
         if self._cache_enabled:
             self._cache_dir.mkdir(parents=True, exist_ok=True)
 
-        if not self.api_key or self.api_key == "${POE_API_KEY}":
+        if not self.api_key or self.api_key == "${SUDO_API_KEY}":
             logger.warning(
-                "POE_API_KEY not set. Get your key at https://poe.com/api/keys "
-                "then: export POE_API_KEY='your_key'"
+                "SUDO_API_KEY not set. Set it in .env or export SUDO_API_KEY."
             )
 
     def _get_http_client(self) -> httpx.AsyncClient:
@@ -116,13 +114,13 @@ class PoeClient:
                 last_error = exc
                 wait = self.retry_delay * (2 ** (attempt - 1))
                 logger.warning(
-                    "Poe API call failed (attempt %d/%d): %s  — retrying in %.1fs",
+                    "SudoCode API call failed (attempt %d/%d): %s  — retrying in %.1fs",
                     attempt, self.max_retries, exc, wait,
                 )
                 await asyncio.sleep(wait)
 
         raise RuntimeError(
-            f"Poe API call failed after {self.max_retries} retries: {last_error}"
+            f"SudoCode API call failed after {self.max_retries} retries: {last_error}"
         )
 
     async def simple_chat(
@@ -188,12 +186,12 @@ class PoeClient:
             logger.warning("Failed to write LLM cache: %s", path)
 
 
-def get_client() -> PoeClient:
-    """Return a PoeClient that reads the latest settings.yaml on every call.
+def get_client() -> SudoClient:
+    """Return a SudoClient that reads the latest settings.yaml on every call.
 
     Intentionally not cached: this ensures that model / key changes in
     settings.yaml take effect for the next job without a server restart.
-    Connection pooling still works within a single PoeClient instance
+    Connection pooling still works within a single SudoClient instance
     (the httpx.AsyncClient is lazy-created and reused per instance).
     """
-    return PoeClient()
+    return SudoClient()

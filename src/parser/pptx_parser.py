@@ -213,6 +213,9 @@ class PptxParser(BaseParser):
                 if not text:
                     continue
                 cell_id = f"{block_id_base}_r{row_idx}c{col_idx}"
+                paras_info = [
+                    get_para_dominant_fmt(p) for p in cell.text_frame.paragraphs
+                ]
                 blocks.append(
                     ContentBlock(
                         id=cell_id,
@@ -224,6 +227,7 @@ class PptxParser(BaseParser):
                             "row": row_idx,
                             "col": col_idx,
                             "shape_kind": "table_cell",
+                            "paras_info": paras_info,
                         },
                     )
                 )
@@ -419,7 +423,8 @@ class PptxParser(BaseParser):
                 translated = self._best_text(block)
                 if not translated or translated == block.source_text:
                     continue
-                distribute_text(cell.text_frame, translated)
+                paras_info = block.metadata.get("paras_info")
+                distribute_text(cell.text_frame, translated, paras_info)
                 enable_autofit(cell.text_frame)
                 adjust_runs_font_size(cell.text_frame, block.source_text, translated)
 

@@ -10,7 +10,7 @@ from typing import Any, Callable
 
 import yaml
 
-from src.llm.poe_client import get_client
+from src.llm.sudo_client import get_client
 from src.models.content import BlockType, ContentBlock, ParsedFile
 from src.models.glossary import Glossary
 from src.prompt.version_manager import PromptVersionManager

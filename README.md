@@ -2,77 +2,81 @@
 
 拖拽上传文件，选择目标语言，一键翻译。支持术语管理、风格统一、自然度审校，翻译质量接近人工译员水平。
 
-## 快速开始
+## 技术栈
 
-**无需手动安装任何依赖**，启动脚本会自动处理一切。
+- **后端**：Python 3.11+ / FastAPI / httpx（调用 SudoCode OpenAI 兼容接口）
+- **前端**：React 18 + TypeScript / Vite / Tailwind CSS 4 / Radix UI
+- 前端构建产物 `frontend/dist/` 由 FastAPI 作为静态资源直接托管
 
-| 系统 | 操作 |
-|------|------|
-| Mac | 终端运行 `bash start.sh`（首次），之后可直接 `./start.sh` |
-| Windows | 双击 `start.bat` |
+## 本地开发
 
-首次启动会自动安装 Python、Node.js 及所有依赖，大约需要 2-3 分钟。之后每次启动秒开。
+```bash
+# 1. 后端依赖
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 
-启动成功后浏览器会自动打开 `http://localhost:8000`。
+# 2. 前端依赖 + 构建
+cd frontend
+npm install
+npm run build
+cd ..
 
-## 首次使用
+# 3. 配置环境变量
+cp .env.example .env
+# 编辑 .env，至少填入：
+#   SUDO_API_KEY=你的 LLM 密钥
+#   ACCESS_PASSWORD=你给前端登录页设置的密码（本地也要设，否则无法登录）
 
-### 1. 配置 API Key
-
-翻译功能需要 LLM API 支持，首次使用前需要配置 API Key。两种方式任选其一：
-
-**方式 A：通过界面配置（推荐）**
-
-启动后点击右上角齿轮图标，在设置面板中填入 API Key 即可。
-
-**方式 B：通过文件配置**
-
-在项目根目录创建 `.env` 文件：
-```
-POE_API_KEY=你的API密钥
-```
-API Key 获取地址：https://poe.com/api/keys
-
-### 2. 首次启动你会看到什么
-
-```
-============================================
-  AgentTranslation - Starting...
-============================================
-
-[Setup] Creating Python virtual environment...     ← 首次会出现，约 1-2 分钟
-[Setup] Installing Python dependencies...          ← 首次会出现
-[Setup] Installing frontend dependencies...        ← 首次会出现
-[Setup] Building frontend...                       ← 首次会出现
-
-[OK] Python dependencies ready
-[OK] Frontend ready
-
-  Server starting at http://localhost:8000         ← 看到这行就说明启动成功了
+# 4. 启动
+python -m uvicorn src.server:app --reload --port 8000
 ```
 
-第二次启动时这些 `[Setup]` 步骤会自动跳过。
+打开 `http://localhost:8000` 即可。
 
-### 3. 停止服务
+前端热更新模式（API 自动代理到 8000）：
 
-在终端按 `Ctrl + C` 即可停止。
+```bash
+cd frontend && npm run dev
+```
 
-### 4. 常见问题
+API Key 获取地址：https://sudocode.us/
 
-| 问题 | 解决方法 |
-|------|----------|
-| 端口 8000 被占用 | 关掉占用该端口的程序，或者停掉上一次没关干净的进程 |
-| Windows 弹出防火墙提示 | 点击"允许访问"（仅本地通信，不联网） |
-| Mac 提示"无法验证开发者" | 右键点击 `start.sh` → 打开 |
-| 翻译报错 | 检查 API Key 是否配置正确（右上角齿轮 → 查看） |
-| 首次启动特别慢 | 正常现象，在下载依赖包，请耐心等待 |
+## 访问鉴权
+
+项目自带一个**共享密码门禁**：所有 `/api/*` 请求都要登录，前端启动时会显示登录页。
+
+- 在 `.env` 中设置 `ACCESS_PASSWORD=你的密码`，重启即可生效
+- `SESSION_SECRET` 用于签名 cookie；不设的话每次重启都会随机生成（导致已登录用户掉线）。**部署到公网时必须设置一个固定值**
+- 没有「注册」概念，所有人共用同一个密码、同一个术语库；后续做用户系统时再升级
+- 登录后只能查看 LLM 配置和 Prompt（只读），不能在线修改——这些只能改代码 / `.env` 后重新部署
+
+## 部署
+
+项目自带一个 `Dockerfile`，专门给生产部署（Zeabur / Vercel / Railway / 自托管 Docker host 等）用。**本地开发不需要 Docker**，按上面「本地开发」走即可。
+
+### 部署到 Zeabur
+
+1. 把项目 push 到 GitHub
+2. 在 Zeabur Dashboard 新建 Project → Add Service → Deploy from GitHub，选这个仓库
+3. 配置环境变量（必填）：
+   - `SUDO_API_KEY` — LLM 密钥
+   - `ACCESS_PASSWORD` — 前端登录页的密码
+   - `SESSION_SECRET` — 用 `python -c "import secrets; print(secrets.token_urlsafe(32))"` 生成一个固定值
+4. Zeabur 自动检测 `Dockerfile` 并构建部署，注入 `$PORT`
+5. 部署完成后绑定域名，访问域名 → 登录页 → 输密码 → 开始用
+
+### ⚠️ 当前限制（首次上线版）
+
+- **数据每次重启清零**：历史任务和术语库都存在容器内的 SQLite，Zeabur 容器无状态，重新部署或重启后清空。后续会迁到 Postgres 解决。
+- **上传 / 下载文件**：源文件和翻译结果存在容器临时目录，重启后下载链接失效。建议翻译完即下载。
 
 ## 支持格式
 
 | 类型 | 格式 |
 |------|------|
 | 演示文稿 | `.pptx` |
-| 文档 | `.docx`、`.md`、`.html` |
+| 文档 | `.docx`、`.md`、`.html`、`.txt` |
 | 字幕 | `.srt`、`.vtt`、`.ass` |
 | 本地化 | `.json`、`.yaml`、`.po`、`.xliff`、`.xml` |
 
@@ -130,11 +134,10 @@ API Key 获取地址：https://poe.com/api/keys
 ## 项目结构
 
 ```
-├── start.sh / start.bat  — 一键启动
 ├── src/        — Python 后端（FastAPI、翻译引擎、格式解析、术语管理）
 ├── frontend/   — React + TypeScript 前端
 ├── config/     — 配置、prompt 模板、翻译风格
-├── data/       — 运行时数据（数据库、缓存）
-├── scripts/    — 开发脚本
+├── data/       — 运行时数据（数据库、缓存，gitignore）
+├── docs/       — 文档
 └── tests/      — 测试
 ```

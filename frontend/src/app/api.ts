@@ -1,5 +1,7 @@
 import type { Language, Job, PromptConfig, GlossaryTerm, LibraryDomain, LibraryTerm } from "./types/translation";
 
+const AUTH_REQUIRED_PATHS = new Set(["/api/login", "/api/auth-status"]);
+
 async function request<T = unknown>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, options);
   const contentType = response.headers.get("content-type") || "";
@@ -8,6 +10,11 @@ async function request<T = unknown>(path: string, options?: RequestInit): Promis
     payload = await response.json();
   } else {
     payload = await response.text();
+  }
+  if (response.status === 401 && !AUTH_REQUIRED_PATHS.has(path)) {
+    // Session expired or never authenticated — kick back to login
+    window.location.reload();
+    throw new Error("需要重新登录");
   }
   if (!response.ok) {
     const message =
@@ -21,6 +28,25 @@ async function request<T = unknown>(path: string, options?: RequestInit): Promis
   return payload as T;
 }
 
+// ── Auth ──────────────────────────────────────────────────────────────
+
+export interface AuthStatus {
+  authenticated: boolean;
+  configured: boolean;
+}
+
+export async function fetchAuthStatus(): Promise<AuthStatus> {
+  return request<AuthStatus>("/api/auth-status");
+}
+
+export async function login(password: string): Promise<void> {
+  await request("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+}
+
 export async function fetchLanguages(): Promise<Language[]> {
   const data = await request<{ languages: Language[] }>("/api/languages");
   return data.languages || [];
@@ -28,14 +54,6 @@ export async function fetchLanguages(): Promise<Language[]> {
 
 export async function fetchPrompt(): Promise<PromptConfig> {
   return request<PromptConfig>("/api/prompt");
-}
-
-export async function savePrompt(content: string): Promise<void> {
-  await request("/api/prompt", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
-  });
 }
 
 export async function submitJobs(
@@ -118,18 +136,6 @@ export interface LLMConfig {
 
 export async function fetchLLMConfig(): Promise<LLMConfig> {
   return request<LLMConfig>("/api/llm-config");
-}
-
-export async function saveLLMConfig(config: {
-  api_key?: string;
-  base_url?: string;
-  model?: string;
-}): Promise<void> {
-  await request("/api/llm-config", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(config),
-  });
 }
 
 // ── Terminology Library API ──────────────────────────────────────────

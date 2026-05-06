@@ -12,7 +12,7 @@ import logging
 from rich.console import Console
 from rich.table import Table
 
-from src.llm.poe_client import get_client
+from src.llm.sudo_client import get_client
 from src.models.glossary import Glossary, GlossaryTerm
 from src.terminology.extractor import TerminologyExtractor
 from src.terminology.glossary import GlossaryManager

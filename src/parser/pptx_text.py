@@ -142,14 +142,20 @@ def distribute_text(
             write_para_with_fmt(para, line, pi)
 
     else:
-        # fallback path: simple positional split
-        for para_idx, para in enumerate(paras):
-            if not para.runs:
-                continue
-            if para_idx < len(all_lines) - 1:
-                line = all_lines[para_idx]
-            elif para_idx == len(all_lines) - 1:
-                line = "\n".join(all_lines[para_idx:])
+        # fallback path: map non-empty source paragraphs to non-empty translation lines.
+        # PPTX cells commonly prefix/intersperse content paragraphs with empty
+        # <a:p> spacers (only <a:endParaRPr>, no runs). Using para_idx directly
+        # against all_lines breaks stride once a spacer is skipped and wipes
+        # content paragraphs to "".
+        targets = [p for p in paras if p.runs]
+        if not targets:
+            return
+        lines = [ln for ln in all_lines if ln.strip()]
+        for i, para in enumerate(targets):
+            if i < len(lines) - 1:
+                line = lines[i]
+            elif i == len(lines) - 1:
+                line = "\n".join(lines[i:])
             else:
                 line = ""
             para.runs[0].text = line

@@ -1,7 +1,7 @@
-poe:
-  api_key: ${POE_API_KEY}
-  base_url: https://api.poe.com/v1
-  timeout: 120
+sudo:
+  api_key: ${SUDO_API_KEY}
+  base_url: https://sudocode.us/v1
+  timeout: 300
   max_retries: 3
   retry_delay: 2
 llm_cache:
@@ -10,11 +10,11 @@ llm_cache:
 server:
   max_job_workers: 4
 models:
-  terminology: gpt-5.2-instant
-  translation: gpt-5.2-instant
-  review: Claude-Sonnet-4.5
-  domain_detection: gpt-5.2-instant
-  quality_scoring: gpt-5.2-instant
+  terminology: gpt-5.4-mini
+  translation: gpt-5.4-mini
+  review: gpt-5.4
+  domain_detection: gpt-5.4-mini
+  quality_scoring: gpt-5.4-mini
 translation:
   max_segment_tokens: 2600
   max_concurrent_languages_per_job: 5
