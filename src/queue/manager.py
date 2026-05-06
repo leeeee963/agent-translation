@@ -127,7 +127,33 @@ class JobQueue:
         return job_id
 
     def get(self, job_id: str) -> dict | None:
-        return self._jobs.get(job_id)
+        if job_id in self._jobs:
+            return self._jobs[job_id]
+        return self._db.get_by_id(job_id)
+
+    def hydrate_outputs(self) -> None:
+        """Rebuild the _outputs map from persisted job data after a restart.
+
+        Without this, download URLs would 404 after a server restart even
+        though the storage objects are still there.
+        """
+        for db_job in self._db.load_all():
+            job_id = db_job.get("job_id")
+            if not job_id:
+                continue
+            for run in db_job.get("language_runs") or []:
+                if run.get("status") != S.DONE:
+                    continue
+                for url_field in ("download_url", "draft_download_url"):
+                    url = run.get(url_field) or ""
+                    prefix = f"/api/download/{job_id}/"
+                    if not url.startswith(prefix):
+                        continue
+                    filename = url[len(prefix):]
+                    if filename:
+                        self._outputs[f"{job_id}/{filename}"] = (
+                            f"jobs/{job_id}/output/{filename}"
+                        )
 
     def list_all(self) -> list[dict]:
         """Return all jobs: in-memory active ones + persisted history, newest first."""

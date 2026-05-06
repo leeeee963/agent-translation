@@ -71,11 +71,14 @@ UNIFIED_PROMPT_ID = "translator"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create tables, seed default domains, eagerly init storage
+    # Startup: create tables, seed default domains, eagerly init storage,
+    # rebuild in-memory output map from DB so downloads survive restart.
     init_db()
     seed_default_domains()
     storage = get_storage()
     logger.info("Storage initialized: %s", type(storage).__name__)
+    job_queue.hydrate_outputs()
+    logger.info("Output map hydrated: %d entries", len(job_queue.outputs))
     yield
     # Shutdown
     dispose_engine()

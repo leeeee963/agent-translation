@@ -131,6 +131,11 @@ class JobDB:
             stmt = select(Job).order_by(Job.created_at.desc())
             return [_orm_to_dict(j) for j in s.scalars(stmt).all()]
 
+    def get_by_id(self, job_id: str) -> dict | None:
+        with session_scope() as s:
+            j = s.get(Job, job_id)
+            return _orm_to_dict(j) if j is not None else None
+
     def delete_job(self, job_id: str) -> None:
         with session_scope() as s:
             existing = s.get(Job, job_id)

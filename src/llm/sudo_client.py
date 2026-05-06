@@ -113,9 +113,10 @@ class SudoClient:
             except (httpx.HTTPStatusError, httpx.RequestError, KeyError) as exc:
                 last_error = exc
                 wait = self.retry_delay * (2 ** (attempt - 1))
+                # repr() ensures empty str(exc) still shows the exception type
                 logger.warning(
-                    "SudoCode API call failed (attempt %d/%d): %s  — retrying in %.1fs",
-                    attempt, self.max_retries, exc, wait,
+                    "SudoCode API call failed (attempt %d/%d): %s — retrying in %.1fs",
+                    attempt, self.max_retries, repr(exc), wait,
                 )
                 await asyncio.sleep(wait)
 
