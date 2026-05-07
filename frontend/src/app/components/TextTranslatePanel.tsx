@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Checkbox } from "./ui/checkbox";
-import { Loader2, Copy, CheckCheck } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { Loader2, Copy, CheckCheck, Plus, X, Check } from "lucide-react";
 import type { Language } from "../types/translation";
-import { LanguageSelector } from "./LanguageSelector";
-import { translateText, type TextTranslateResult } from "../api";
+import { fetchLanguages, translateText, type TextTranslateResult } from "../api";
 import { useLanguage } from "../contexts/LanguageContext";
 import { toast } from "sonner";
 import { formatDuration } from "../utils/duration";
@@ -32,24 +37,38 @@ function langDisplay(code: string, uiLang: "zh" | "en"): string {
   return LANG_NAMES[code]?.[uiLang] ?? code;
 }
 
+const DEFAULT_TARGETS = ["zh-CN"];
+
 export function TextTranslatePanel() {
-  const { language: uiLang, t } = useLanguage();
+  const { language: uiLang } = useLanguage();
+  const [allLangs, setAllLangs] = useState<Language[]>([]);
+  const [selectedCodes, setSelectedCodes] = useState<string[]>(DEFAULT_TARGETS);
   const [sourceText, setSourceText] = useState("");
-  const [selectedLangs, setSelectedLangs] = useState<Language[]>([]);
   const [review, setReview] = useState(true);
   const [translating, setTranslating] = useState(false);
   const [results, setResults] = useState<Record<string, TextTranslateResult> | null>(null);
   const [sourceLanguage, setSourceLanguage] = useState("");
 
-  const canTranslate = sourceText.trim().length > 0 && selectedLangs.length > 0 && !translating;
+  useEffect(() => {
+    fetchLanguages().then(setAllLangs).catch(() => {});
+  }, []);
+
+  const canTranslate = sourceText.trim().length > 0 && selectedCodes.length > 0 && !translating;
+  const availableToAdd = allLangs.filter((l) => !selectedCodes.includes(l.code));
+
+  function addLang(code: string) {
+    if (!selectedCodes.includes(code)) setSelectedCodes([...selectedCodes, code]);
+  }
+  function removeLang(code: string) {
+    setSelectedCodes(selectedCodes.filter((c) => c !== code));
+  }
 
   async function handleTranslate() {
     if (!canTranslate) return;
     setTranslating(true);
     setResults(null);
     try {
-      const codes = selectedLangs.map((l) => l.code);
-      const res = await translateText(sourceText, codes, review);
+      const res = await translateText(sourceText, selectedCodes, review);
       setResults(res.results);
       setSourceLanguage(res.source_language);
     } catch (err) {
@@ -60,90 +79,131 @@ export function TextTranslatePanel() {
   }
 
   return (
-    <div className="flex flex-col gap-4 h-full">
-      {/* ── Top control bar ───────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 bg-card border border-border rounded-xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.03)]">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-sm font-medium text-foreground shrink-0">
-            {uiLang === "zh" ? "目标语言" : "Target languages"}
-          </span>
-          <div className="flex-1 min-w-[200px]">
-            <LanguageSelector
-              selectedLanguages={selectedLangs}
-              onLanguagesChange={setSelectedLangs}
-              variant="compact"
-            />
-          </div>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer select-none">
-            <Checkbox checked={review} onCheckedChange={(v) => setReview(v === true)} />
-            <span>{uiLang === "zh" ? "自然度审校" : "Naturalness review"}</span>
-          </label>
-          <Button
-            variant="action"
-            onClick={handleTranslate}
-            disabled={!canTranslate}
-            className="px-6"
+    <div className="flex flex-col gap-4 h-full p-1">
+      {/* ── Top control bar (single row) ─────────────────────────── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm font-medium text-muted-foreground shrink-0 mr-1">
+          {uiLang === "zh" ? "译入" : "To"}
+        </span>
+
+        {/* Selected language chips */}
+        {selectedCodes.map((code) => (
+          <span
+            key={code}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-muted text-foreground rounded-md border border-border"
           >
-            {translating ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              t("common.start")
-            )}
-          </Button>
-        </div>
+            {langDisplay(code, uiLang)}
+            <button
+              onClick={() => removeLang(code)}
+              className="hover:text-destructive transition-colors -mr-0.5"
+              title={uiLang === "zh" ? "移除" : "Remove"}
+            >
+              <X className="size-3" />
+            </button>
+          </span>
+        ))}
+
+        {/* Add language dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              disabled={availableToAdd.length === 0}
+            >
+              <Plus className="size-3 mr-0.5" />
+              {uiLang === "zh" ? "添加" : "Add"}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
+            {availableToAdd.map((lang) => (
+              <DropdownMenuItem
+                key={lang.code}
+                onClick={() => addLang(lang.code)}
+                className="cursor-pointer"
+              >
+                <span className="flex-1">{langDisplay(lang.code, uiLang)}</span>
+                <span className="text-xs text-muted-foreground ml-3">{lang.code}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <div className="flex-1" />
+
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none mr-2">
+          <Checkbox checked={review} onCheckedChange={(v) => setReview(v === true)} />
+          <span>{uiLang === "zh" ? "自然度审校" : "Naturalness review"}</span>
+        </label>
+
+        <Button
+          variant="action"
+          onClick={handleTranslate}
+          disabled={!canTranslate}
+          className="px-5 h-8"
+        >
+          {translating ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin mr-1.5" />
+              {uiLang === "zh" ? "翻译中" : "Translating"}
+            </>
+          ) : (
+            <>
+              <Check className="size-3.5 mr-1.5" />
+              {uiLang === "zh" ? "翻译" : "Translate"}
+            </>
+          )}
+        </Button>
       </div>
 
       {/* ── Two-column area: source / outputs ─────────────────────── */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-0">
         {/* Source input */}
-        <div className="flex flex-col bg-card border border-border rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.03)] overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
-            <span className="text-sm font-medium">
+        <div className="flex flex-col bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-3 py-2 border-b border-border flex items-center justify-between text-xs">
+            <span className="font-medium">
               {uiLang === "zh" ? "原文" : "Source"}
               {sourceLanguage && (
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {langDisplay(sourceLanguage, uiLang)}
+                <span className="ml-2 text-muted-foreground font-normal">
+                  · {langDisplay(sourceLanguage, uiLang)}
                 </span>
               )}
             </span>
-            <span className="text-xs text-muted-foreground">{sourceText.length}</span>
+            <span className="text-muted-foreground tabular-nums">{sourceText.length}</span>
           </div>
           <Textarea
             value={sourceText}
             onChange={(e) => setSourceText(e.target.value)}
             placeholder={
-              uiLang === "zh"
-                ? "粘贴或输入要翻译的文本……"
-                : "Paste or type the text to translate…"
+              uiLang === "zh" ? "粘贴或输入要翻译的文本……" : "Paste or type the text to translate…"
             }
-            className="flex-1 border-0 rounded-none resize-none focus-visible:ring-0 text-sm"
+            className="flex-1 border-0 rounded-none resize-none focus-visible:ring-0 text-sm leading-relaxed p-3"
           />
         </div>
 
         {/* Outputs */}
         <div className="flex flex-col gap-3 min-h-0 overflow-y-auto">
           {!results && !translating && (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm bg-muted/30 rounded-xl border border-dashed border-border">
-              {uiLang === "zh" ? "译文将显示在这里" : "Translations will appear here"}
+            <div className="flex-1 flex items-center justify-center text-muted-foreground/70 text-sm bg-muted/20 rounded-xl border border-dashed border-border">
+              {uiLang === "zh" ? "译文将显示在这里" : "Translations appear here"}
             </div>
           )}
           {translating && !results && (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm bg-muted/30 rounded-xl border border-border">
+            <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm bg-muted/20 rounded-xl border border-border">
               <Loader2 className="size-4 animate-spin mr-2" />
               {uiLang === "zh" ? "翻译中…" : "Translating…"}
             </div>
           )}
           {results &&
-            selectedLangs.map((lang) => {
-              const r = results[lang.code];
+            selectedCodes.map((code) => {
+              const r = results[code];
               if (!r) return null;
               return (
                 <ResultCard
-                  key={lang.code}
-                  langCode={lang.code}
-                  langDisplay={langDisplay(lang.code, uiLang)}
+                  key={code}
+                  langCode={code}
+                  langDisplay={langDisplay(code, uiLang)}
                   result={r}
                   uiLang={uiLang}
                 />
@@ -182,28 +242,26 @@ function ResultCard({
   const hasError = !!result.error;
 
   return (
-    <div className="bg-card border border-border rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.03)] overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm">
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between text-xs">
+        <div className="flex items-center gap-2">
           <span className="font-medium">{langDisplay}</span>
-          <span className="text-xs text-muted-foreground">{langCode}</span>
+          <span className="text-muted-foreground">{langCode}</span>
           {result.elapsed_seconds > 0 && (
-            <span className="text-[10px] text-muted-foreground/70">
-              {formatDuration(result.elapsed_seconds)}
-            </span>
+            <span className="text-muted-foreground/70">· {formatDuration(result.elapsed_seconds)}</span>
           )}
         </div>
         {!hasError && result.translated && (
           <button
             onClick={handleCopy}
-            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"
+            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted -mr-1"
             title={uiLang === "zh" ? "复制" : "Copy"}
           >
             {copied ? <CheckCheck className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
           </button>
         )}
       </div>
-      <div className="px-4 py-3 text-sm whitespace-pre-wrap break-words min-h-[60px]">
+      <div className="px-3 py-3 text-sm whitespace-pre-wrap break-words leading-relaxed min-h-[60px]">
         {hasError ? (
           <span className="text-destructive">{result.error}</span>
         ) : (
