@@ -27,6 +27,7 @@ from src.models.task import TaskStatus as S
 from src.queue.manager import JobQueue
 from src.storage import LocalStorage, get_storage, reset_storage
 from src.terminology.library_db import seed_default_domains
+from src.translator.text_translator import translate_text
 from src.utils.file_utils import get_temp_dir, validate_file
 from src.utils.paths import get_config_dir, get_frontend_dist_dir
 from src.utils.style_loader import list_styles as load_style_configs
@@ -270,6 +271,54 @@ async def api_list_styles() -> dict:
             for k, v in styles.items()
         ]
     }
+
+
+# ── Text translation (no file upload) ───────────────────────────────
+
+class TextTranslateRequest(BaseModel):
+    text: str
+    target_languages: list[str]
+    review: bool = True
+
+
+@app.post("/api/text/translate")
+async def text_translate(payload: TextTranslateRequest) -> dict:
+    """Translate a piece of text into one or more target languages.
+
+    Same translator/reviewer agents as file translation, but skips the
+    file parse → terminology review → rebuild flow. Term library is
+    auto-applied for hard / keep_original constraints.
+    """
+    text = (payload.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="text 不能为空")
+    targets = [t.strip() for t in (payload.target_languages or []) if t.strip()]
+    if not targets:
+        raise HTTPException(status_code=400, detail="至少选择一个目标语言")
+
+    import asyncio as _asyncio
+
+    async def _run(lang: str) -> tuple[str, dict]:
+        try:
+            result = await translate_text(text, target_language=lang, review=payload.review)
+            return lang, result
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("text translate failed for %s: %s", lang, exc)
+            return lang, {"translated": "", "error": str(exc), "elapsed_seconds": 0.0}
+
+    pairs = await _asyncio.gather(*[_run(t) for t in targets])
+
+    source_language = ""
+    results: dict[str, dict] = {}
+    for lang, r in pairs:
+        if not source_language and r.get("source_language"):
+            source_language = r["source_language"]
+        results[lang] = {
+            "translated": r.get("translated", ""),
+            "elapsed_seconds": round(r.get("elapsed_seconds", 0.0), 2),
+            "error": r.get("error"),
+        }
+    return {"source_language": source_language, "results": results}
 
 
 # ── Job queue endpoints ───────────────────────────────────────────────

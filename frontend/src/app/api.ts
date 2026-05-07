@@ -52,6 +52,35 @@ export async function fetchLanguages(): Promise<Language[]> {
   return data.languages || [];
 }
 
+// ── Text-only translation ─────────────────────────────────────────────
+
+export interface TextTranslateResult {
+  translated: string;
+  elapsed_seconds: number;
+  error: string | null;
+}
+
+export interface TextTranslateResponse {
+  source_language: string;
+  results: Record<string, TextTranslateResult>;
+}
+
+export async function translateText(
+  text: string,
+  targetLanguages: string[],
+  review: boolean = true,
+): Promise<TextTranslateResponse> {
+  return request<TextTranslateResponse>("/api/text/translate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text,
+      target_languages: targetLanguages,
+      review,
+    }),
+  });
+}
+
 export async function submitJobs(
   files: File[],
   targetLanguages: string[],

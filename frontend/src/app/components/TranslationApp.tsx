@@ -3,11 +3,12 @@ import { FileUploadSection } from "./FileUploadSection";
 import { LanguageSelector } from "./LanguageSelector";
 import { TaskWorkbenchSection } from "./TaskWorkbenchSection";
 import { TermLibraryContent } from "./TermLibraryPage";
+import { TextTranslatePanel } from "./TextTranslatePanel";
 import type { TranslationFile, Language, Job, LibraryDomain } from "../types/translation";
 import { submitJobs, fetchJobs, cancelJob, deleteJobs, fetchLibraryDomains } from "../api";
 import { Button } from "./ui/button";
 import {
-  LibraryBig, Moon, Sun, Languages,
+  LibraryBig, Moon, Sun, Languages, Type,
   FilePlus2, ClipboardList, X, Loader2,
 } from "lucide-react";
 import { Toaster } from "./ui/sonner";
@@ -39,6 +40,7 @@ export function TranslationApp() {
 
   // ── Layout state ──
   const [showLibrary, setShowLibrary] = useState(false);
+  const [showText, setShowText] = useState(false);
   const [showCreatePanel, setShowCreatePanel] = useState(true);
 
   // ── Effects ──
@@ -108,9 +110,10 @@ export function TranslationApp() {
       {/* ── Sidebar ── */}
       <Sidebar
         navItems={[
-          { icon: <FilePlus2 className="size-5" />, label: t("nav.create"), active: showCreatePanel && !showLibrary, onClick: () => setShowCreatePanel((v) => !v) },
-          { icon: <ClipboardList className="size-5" />, label: t("nav.taskList"), active: !showLibrary },
-          { icon: <LibraryBig className="size-5" />, label: t("nav.library"), active: showLibrary, onClick: () => setShowLibrary((v) => !v) },
+          { icon: <FilePlus2 className="size-5" />, label: t("nav.create"), active: showCreatePanel && !showLibrary && !showText, onClick: () => { setShowLibrary(false); setShowText(false); setShowCreatePanel((v) => !v); } },
+          { icon: <ClipboardList className="size-5" />, label: t("nav.taskList"), active: !showLibrary && !showText, onClick: () => { setShowLibrary(false); setShowText(false); } },
+          { icon: <Type className="size-5" />, label: t("nav.text"), active: showText, onClick: () => { setShowText((v) => !v); setShowLibrary(false); } },
+          { icon: <LibraryBig className="size-5" />, label: t("nav.library"), active: showLibrary, onClick: () => { setShowLibrary((v) => !v); setShowText(false); } },
         ]}
         bottomItems={[
           { icon: theme === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />, label: theme === 'dark' ? t('theme.light') : t('theme.dark'), onClick: toggleTheme },
@@ -209,23 +212,41 @@ export function TranslationApp() {
           </Panel>
         }
 
-        showOverlay={showLibrary}
+        showOverlay={showLibrary || showText}
         overlay={
-          <Panel
-            title={t("nav.library")}
-            className="h-full"
-            headerRight={
-              <button
-                onClick={() => setShowLibrary(false)}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"
-                title={t('common.close') || '关闭'}
-              >
-                <X className="size-4" />
-              </button>
-            }
-          >
-            <TermLibraryContent />
-          </Panel>
+          showLibrary ? (
+            <Panel
+              title={t("nav.library")}
+              className="h-full"
+              headerRight={
+                <button
+                  onClick={() => setShowLibrary(false)}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"
+                  title={t('common.close') || '关闭'}
+                >
+                  <X className="size-4" />
+                </button>
+              }
+            >
+              <TermLibraryContent />
+            </Panel>
+          ) : showText ? (
+            <Panel
+              title={t("nav.text")}
+              className="h-full"
+              headerRight={
+                <button
+                  onClick={() => setShowText(false)}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"
+                  title={t('common.close') || '关闭'}
+                >
+                  <X className="size-4" />
+                </button>
+              }
+            >
+              <TextTranslatePanel />
+            </Panel>
+          ) : null
         }
       />
 

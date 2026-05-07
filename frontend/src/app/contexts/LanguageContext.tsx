@@ -16,6 +16,7 @@ const translations: Record<string, Record<AppLanguage, string>> = {
   'nav.create': { en: 'New Translation', zh: '新建翻译' },
   'nav.taskList': { en: 'Translations', zh: '翻译查看' },
   'nav.library': { en: 'Terminology', zh: '术语库' },
+  'nav.text': { en: 'Text Translate', zh: '文本翻译' },
   'nav.settings': { en: 'Settings', zh: '设置' },
 
   // Common
