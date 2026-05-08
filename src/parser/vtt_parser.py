@@ -7,6 +7,7 @@ from pathlib import Path
 import webvtt
 
 from src.models.content import BlockType, ContentBlock, FileMeta, ParsedFile
+from src.parser._subtitle_utils import strip_line_end_punctuation
 from src.parser.base import BaseParser
 
 logger = logging.getLogger(__name__)
@@ -65,7 +66,7 @@ class VttParser(BaseParser):
             if block.type != BlockType.SUBTITLE:
                 continue
             meta = block.metadata
-            text = self._best_text(block)
+            text = strip_line_end_punctuation(self._best_text(block))
             lines.append(f"{meta['start']} --> {meta['end']}")
             lines.append(text)
             lines.append("")

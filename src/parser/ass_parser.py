@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from src.models.content import BlockType, ContentBlock, FileMeta, ParsedFile
+from src.parser._subtitle_utils import strip_line_end_punctuation
 from src.parser.base import BaseParser
 
 logger = logging.getLogger(__name__)
@@ -132,6 +133,8 @@ class AssParser(BaseParser):
             if translated == block.source_text:
                 rebuilt_events.append(line)
                 continue
+
+            translated = strip_line_end_punctuation(translated)
 
             col_count = block.metadata["format_col_count"]
             text_col = block.metadata["text_col_index"]

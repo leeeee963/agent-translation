@@ -7,6 +7,7 @@ from pathlib import Path
 import pysrt
 
 from src.models.content import BlockType, ContentBlock, FileMeta, ParsedFile
+from src.parser._subtitle_utils import strip_line_end_punctuation
 from src.parser.base import BaseParser
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,7 @@ class SrtParser(BaseParser):
             if block.type != BlockType.SUBTITLE:
                 continue
             meta = block.metadata
-            text = self._best_text(block)
+            text = strip_line_end_punctuation(self._best_text(block))
             lines.append(str(meta["index"]))
             lines.append(f"{meta['start']} --> {meta['end']}")
             lines.append(text)
