@@ -69,6 +69,69 @@ def _run_has_drawing(run) -> bool:
     return len(run._r.findall("w:drawing", _W_NSMAP)) > 0
 
 
+# Fast-path detector: any complex-script char at all? Skip per-script regex if not.
+_COMPLEX_SCRIPT_RE = re.compile(
+    "[฀-๿຀-໿֐-׿"
+    "؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿"
+    "ऀ-ॿঀ-৿஀-௿"
+    "က-႟ក-៿]"
+)
+
+# Per-script rules: (detector regex, w:rFonts/@w:cs font, w:lang/@w:bidi tag, is_rtl).
+# Fonts chosen are the Microsoft defaults shipped with Office on Windows/Mac.
+_SCRIPT_RULES: list[tuple["re.Pattern[str]", str, str, bool]] = [
+    (re.compile(r"[฀-๿]"), "Tahoma", "th-TH", False),
+    (re.compile(r"[຀-໿]"), "DokChampa", "lo-LA", False),
+    (re.compile(r"[֐-׿]"), "Arial", "he-IL", True),
+    (re.compile(r"[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]"),
+        "Arial", "ar-SA", True),
+    (re.compile(r"[ऀ-ॿ]"), "Mangal", "hi-IN", False),
+    (re.compile(r"[ঀ-৿]"), "Vrinda", "bn-IN", False),
+    (re.compile(r"[஀-௿]"), "Latha", "ta-IN", False),
+    (re.compile(r"[က-႟]"), "Myanmar Text", "my-MM", False),
+    (re.compile(r"[ក-៿]"), "DaunPenh", "km-KH", False),
+]
+
+
+def _ensure_complex_script_rpr(run, text: str) -> None:
+    """Attach <w:cs/>, optional <w:rtl/>, w:rFonts@cs and w:lang@bidi to the run's
+    rPr when text contains complex-script characters. Without these, Word renders
+    Thai/Arabic/Devanagari combining vowels and tone marks at the wrong positions
+    even though the UTF-8 bytes are valid — which looks like garbled text.
+    """
+    if not text or not _COMPLEX_SCRIPT_RE.search(text):
+        return
+
+    for pattern, cs_font, bidi_lang, is_rtl in _SCRIPT_RULES:
+        if pattern.search(text):
+            break
+    else:
+        return
+
+    r_elem = run._r
+    rpr = r_elem.find("w:rPr", _W_NSMAP)
+    if rpr is None:
+        rpr = etree.SubElement(r_elem, f"{{{_W_NS}}}rPr")
+        r_elem.insert(0, rpr)
+
+    rfonts = rpr.find("w:rFonts", _W_NSMAP)
+    if rfonts is None:
+        rfonts = etree.SubElement(rpr, f"{{{_W_NS}}}rFonts")
+        rpr.insert(0, rfonts)
+    rfonts.set(f"{{{_W_NS}}}cs", cs_font)
+
+    if rpr.find("w:cs", _W_NSMAP) is None:
+        etree.SubElement(rpr, f"{{{_W_NS}}}cs")
+
+    if is_rtl and rpr.find("w:rtl", _W_NSMAP) is None:
+        etree.SubElement(rpr, f"{{{_W_NS}}}rtl")
+
+    lang = rpr.find("w:lang", _W_NSMAP)
+    if lang is None:
+        lang = etree.SubElement(rpr, f"{{{_W_NS}}}lang")
+    lang.set(f"{{{_W_NS}}}bidi", bidi_lang)
+
+
 def _safe_set_run_text(run, text: str) -> None:
     """Set the text of a run using direct lxml operations.
 
@@ -85,6 +148,7 @@ def _safe_set_run_text(run, text: str) -> None:
         t.text = text
         if text.startswith(" ") or text.endswith(" "):
             t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+        _ensure_complex_script_rpr(run, text)
 
 
 def _safe_clear_run_text(run) -> None:
@@ -470,12 +534,14 @@ class DocxParser(BaseParser):
             ) > 0
             if has_drawing:
                 # Keep the images, just append a new run with the text
-                para.add_run(translated_text)
+                new_run = para.add_run(translated_text)
+                _ensure_complex_script_rpr(new_run, translated_text)
             else:
                 try:
                     if para.text.strip():
                         para.clear()
-                        para.add_run(translated_text)
+                        new_run = para.add_run(translated_text)
+                        _ensure_complex_script_rpr(new_run, translated_text)
                 except Exception:
                     pass
             return
