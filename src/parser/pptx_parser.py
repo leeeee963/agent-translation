@@ -172,11 +172,13 @@ class PptxParser(BaseParser):
     def _parse_text_frame(
         self, tf, slide_idx: int, shape_idx: int, block_id: str
     ) -> ContentBlock | None:
-        full_text = tf.text.strip()
+        paras_info = [get_para_dominant_fmt(para) for para in tf.paragraphs]
+        # Build source from non-icon runs only — see _run_is_icon in pptx_text.
+        full_text = "\n".join(
+            pi.get("translatable_text") or pi.get("text", "") for pi in paras_info
+        ).strip()
         if not full_text:
             return None
-
-        paras_info = [get_para_dominant_fmt(para) for para in tf.paragraphs]
 
         max_font_size = 0
         for pi in paras_info:
@@ -209,13 +211,16 @@ class PptxParser(BaseParser):
         blocks: list[ContentBlock] = []
         for row_idx, row in enumerate(table.rows):
             for col_idx, cell in enumerate(row.cells):
-                text = cell.text.strip()
-                if not text:
-                    continue
-                cell_id = f"{block_id_base}_r{row_idx}c{col_idx}"
                 paras_info = [
                     get_para_dominant_fmt(p) for p in cell.text_frame.paragraphs
                 ]
+                text = "\n".join(
+                    pi.get("translatable_text") or pi.get("text", "")
+                    for pi in paras_info
+                ).strip()
+                if not text:
+                    continue
+                cell_id = f"{block_id_base}_r{row_idx}c{col_idx}"
                 blocks.append(
                     ContentBlock(
                         id=cell_id,
