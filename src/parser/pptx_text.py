@@ -1,4 +1,10 @@
-"""Paragraph-level text formatting helpers for PPTX parsing and rebuilding."""
+"""Paragraph-level text formatting helpers for PPTX parsing and rebuilding.
+
+Per-paragraph block model (from 2026-05): each PPTX paragraph that carries
+translatable text is its own ContentBlock. The LLM returns one [[BLOCK:id]]
+per paragraph, so newline-based splitting heuristics are gone — rebuild looks
+up the translation by (text_frame_group, para_index) and writes it directly.
+"""
 
 from __future__ import annotations
 
@@ -58,7 +64,8 @@ def get_para_dominant_fmt(para) -> dict:
     Only *explicitly* set run attributes (True/False, not None=inherited) are
     considered — None means "inherit from theme/master" and is left untouched.
 
-    Returns a dict with keys: text, bold, italic, underline,
+    Returns a dict with keys: text, translatable_text, runs_kind,
+                               bold, italic, underline,
                                font_name, font_size (EMU int), color.
     """
     total_chars = 0
@@ -124,18 +131,22 @@ def get_para_dominant_fmt(para) -> dict:
     }
 
 
-def write_para_with_fmt(para, text: str, fmt: dict) -> None:
+def write_para_with_fmt(para, text: str, fmt: dict | None) -> None:
     """Write *text* into *para*'s first non-icon run and apply dominant format.
 
     Icon-font runs (Material Icons, Font Awesome, Wingdings, …) are left
     completely untouched so their ligature glyphs keep rendering correctly.
     Clears text from other non-icon runs so the paragraph contains exactly
     one text-bearing run plus any preserved icon runs.
+
+    *text* may not contain newlines — caller must collapse any \\n / \\r first
+    (per-paragraph blocks are single-line by contract).
     """
     runs = para.runs
     if not runs:
         return  # Paragraph has no runs (rare in PPTX); skip safely.
 
+    fmt = fmt or {}
     runs_kind = fmt.get("runs_kind")
     target_idx = 0
     if runs_kind and len(runs_kind) == len(runs):
@@ -145,6 +156,14 @@ def write_para_with_fmt(para, text: str, fmt: dict) -> None:
         )
         if target_idx == -1:
             return  # Entire paragraph is icons — nothing translatable to write.
+    else:
+        # Fallback: pick the first non-icon run by inspecting the run itself.
+        target_idx = next(
+            (i for i, r in enumerate(runs) if not _run_is_icon(r)),
+            -1,
+        )
+        if target_idx == -1:
+            return
 
     target = runs[target_idx]
     target.text = text
@@ -164,73 +183,76 @@ def write_para_with_fmt(para, text: str, fmt: dict) -> None:
             continue
         if runs_kind and i < len(runs_kind) and runs_kind[i].get("is_icon"):
             continue  # Preserve icon-font run as-is.
+        if not runs_kind and _run_is_icon(run):
+            continue
         run.text = ""
 
 
-def distribute_text(
-    text_frame,
-    new_text: str,
-    paras_info: list | None = None,
-) -> None:
-    """Distribute *new_text* back across the paragraphs of *text_frame*.
+def _flatten_for_paragraph(text: str) -> str:
+    """Collapse newlines/CR for single-paragraph writing.
 
-    Strategy
-    --------
-    1. Split *new_text* on ``\\n`` to get per-paragraph translated lines.
-    2. Only write to paragraphs that were non-empty in the original
-       (tracked via *paras_info*).  Originally-empty paragraphs (used for
-       spacing) are cleared and left empty so the layout is preserved.
-    3. Apply the dominant bold/italic/underline from the original paragraph
-       to the translated run, so formatting is faithfully restored.
-
-    When *paras_info* is ``None`` (table cells, chart titles, notes) the
-    method falls back to a simple newline-split across paragraphs without
-    any format re-application.
+    LLM occasionally returns multi-line output for a per-paragraph block. PPTX
+    runs render literal \\n as nothing or a stray glyph depending on viewer, so
+    we replace with a single space and squash repeats.
     """
-    paras = text_frame.paragraphs
-    if not paras:
-        return
+    if not text:
+        return ""
+    flat = text.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
+    while "  " in flat:
+        flat = flat.replace("  ", " ")
+    return flat.strip()
 
-    # split translated text into candidate lines
-    all_lines = new_text.split("\n")
 
-    if paras_info and len(paras_info) == len(paras):
-        # informed path: use stored paragraph structure
-        meaningful = [ln for ln in all_lines if ln.strip()]
+def write_paragraphs_by_index(
+    text_frame,
+    paras_blocks: dict[int, "object"],
+) -> tuple[str, str]:
+    """Write per-paragraph translations into *text_frame*.
 
-        trans_ptr = 0
-        for para_idx, para in enumerate(paras):
-            pi = paras_info[para_idx]
-            if not pi.get("text", "").strip():
-                # Originally empty paragraph (spacer) — keep it empty.
-                for run in para.runs:
-                    run.text = ""
-                continue
+    *paras_blocks* maps paragraph-index → ContentBlock for paragraphs that had
+    translatable content at parse time. Paragraphs absent from the map are
+    spacers or icon-only — we leave them untouched.
 
-            line = meaningful[trans_ptr] if trans_ptr < len(meaningful) else ""
-            trans_ptr += 1
-            write_para_with_fmt(para, line, pi)
+    Translation precedence: ``reviewed_text`` then ``translated_text``. If both
+    are empty we fall back to ``source_text`` so a missing translation never
+    blanks a cell, and emit a warning so the gap is visible in logs.
 
-    else:
-        # fallback path: map non-empty source paragraphs to non-empty translation lines.
-        # PPTX cells commonly prefix/intersperse content paragraphs with empty
-        # <a:p> spacers (only <a:endParaRPr>, no runs). Using para_idx directly
-        # against all_lines breaks stride once a spacer is skipped and wipes
-        # content paragraphs to "".
-        targets = [p for p in paras if p.runs]
-        if not targets:
-            return
-        lines = [ln for ln in all_lines if ln.strip()]
-        for i, para in enumerate(targets):
-            if i < len(lines) - 1:
-                line = lines[i]
-            elif i == len(lines) - 1:
-                line = "\n".join(lines[i:])
-            else:
-                line = ""
-            para.runs[0].text = line
-            for run in para.runs[1:]:
-                run.text = ""
+    Returns ``(joined_source, joined_translated)`` for downstream font-size
+    autofit calculations. Empty strings if nothing was written.
+    """
+    paras = list(text_frame.paragraphs)
+    source_chunks: list[str] = []
+    translated_chunks: list[str] = []
+
+    for para_idx, para in enumerate(paras):
+        block = paras_blocks.get(para_idx)
+        if block is None:
+            continue
+        preferred = (
+            (block.reviewed_text or "").strip()
+            or (block.translated_text or "").strip()
+        )
+        if preferred:
+            candidate = _flatten_for_paragraph(preferred)
+        else:
+            logger.warning(
+                "Block %s: no translation produced; falling back to source text",
+                getattr(block, "id", "?"),
+            )
+            candidate = _flatten_for_paragraph(block.source_text)
+        if not candidate:
+            continue
+        meta = block.metadata or {}
+        # Re-apply any leading/trailing whitespace that surrounded the
+        # translatable text in the source paragraph (e.g., the space after
+        # an icon-font ligature).
+        candidate = (meta.get("lead_ws") or "") + candidate + (meta.get("trail_ws") or "")
+        para_format = meta.get("para_format") or {}
+        write_para_with_fmt(para, candidate, para_format)
+        source_chunks.append(block.source_text)
+        translated_chunks.append(candidate)
+
+    return "\n".join(source_chunks), "\n".join(translated_chunks)
 
 
 def warn_overflow(source: str, translated: str, block_id: str) -> None:

@@ -29,7 +29,12 @@ _REVIEW_PROMPT_PATH = _CONFIG_DIR / "prompts" / "naturalness_review.md"
 _SETTINGS_PATH = _CONFIG_DIR / "settings.yaml"
 
 _BLOCK_MARKER = "[[BLOCK:{block_id}]]"
-_BLOCK_MARKER_RE = re.compile(r"\[\[BLOCK:([\w\-]+)\]\]")
+# Markers must sit on their own line so a translation that mentions
+# "[[BLOCK:foo]]" or "[[END]]" inline doesn't pollute parsing.
+_BLOCK_MARKER_RE = re.compile(r"(?:^|\n)\[\[BLOCK:([\w\-]+)\]\][ \t]*\n?")
+_GROUP_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+_END_SENTINEL = "[[END]]"
+_END_LINE_RE = re.compile(r"(?:^|\n)[ \t]*\[\[END\]\][ \t]*(?=\n|$)")
 
 ProgressCallback = Callable[[dict[str, Any]], None]
 
@@ -45,10 +50,17 @@ def _load_review_template() -> str:
 def _build_marked_review_input(blocks: list[ContentBlock]) -> str:
     """Build marked input for the review pass using the draft translation."""
     parts: list[str] = []
+    last_group: str | None = None
     for block in blocks:
         text = block.translated_text or block.source_text
-        parts.append(f"{_BLOCK_MARKER.format(block_id=block.id)}\n{text}")
-    return "\n\n".join(parts)
+        group = block.metadata.get("text_frame_group") if block.metadata else None
+        marker = f"{_BLOCK_MARKER.format(block_id=block.id)}\n{text}"
+        if group and group != last_group:
+            parts.append(f"<!-- group: {group} -->\n{marker}")
+        else:
+            parts.append(marker)
+        last_group = group
+    return "\n\n".join(parts) + f"\n\n{_END_SENTINEL}"
 
 
 def _load_translation_settings() -> dict[str, Any]:
@@ -62,21 +74,40 @@ def _load_translation_settings() -> dict[str, Any]:
 
 def _build_marked_input(blocks: list[ContentBlock]) -> str:
     parts: list[str] = []
+    last_group: str | None = None
     for block in blocks:
-        parts.append(f"{_BLOCK_MARKER.format(block_id=block.id)}\n{block.source_text}")
-    return "\n\n".join(parts)
+        group = block.metadata.get("text_frame_group") if block.metadata else None
+        marker = f"{_BLOCK_MARKER.format(block_id=block.id)}\n{block.source_text}"
+        if group and group != last_group:
+            parts.append(f"<!-- group: {group} -->\n{marker}")
+        else:
+            parts.append(marker)
+        last_group = group
+    return "\n\n".join(parts) + f"\n\n{_END_SENTINEL}"
 
 
 def _parse_marked_response(response: str, blocks: list[ContentBlock]) -> set[str]:
     """Parse marked response and return matched block ids."""
     block_map = {block.id: block for block in blocks}
+    # Truncate at the LAST line that is exactly "[[END]]" (whitespace-only on
+    # the line). Using the last occurrence — not the first — defends against
+    # a translation that legitimately contains "[[END]]" on its own line:
+    # a well-behaved LLM still emits the real terminator after all blocks, and
+    # using `last` keeps subsequent blocks in scope. Inline mentions like
+    # "see [[END]] of section" never match in the first place because the
+    # regex requires the marker to occupy the entire line.
+    end_matches = list(_END_LINE_RE.finditer(response))
+    if end_matches:
+        response = response[: end_matches[-1].start()]
     chunks = _BLOCK_MARKER_RE.split(response)
     matched_ids: set[str] = set()
 
     idx = 1
     while idx + 1 < len(chunks):
         block_id = chunks[idx].strip()
-        text = chunks[idx + 1].strip()
+        # Strip any <!-- group: X --> comments the LLM may have echoed back
+        # before/after the translated text — they're scaffolding, not content.
+        text = _GROUP_COMMENT_RE.sub("", chunks[idx + 1]).strip()
         if block_id in block_map and text:
             block_map[block_id].translated_text = text
             matched_ids.add(block_id)
@@ -90,47 +121,19 @@ def _parse_marked_response(response: str, blocks: list[ContentBlock]) -> set[str
         len(matched_ids),
         len(blocks),
     )
-    if not matched_ids:
-        _fallback_split(response, blocks)
-        return {block.id for block in blocks if block.translated_text}
-
+    # Single-block convenience: when there's exactly one expected block and
+    # no marker matched (e.g., the LLM forgot the marker but produced a clean
+    # translation), accept the whole response as the translation. This is
+    # safe because there's no ambiguity about which block it belongs to.
+    if not matched_ids and len(blocks) == 1:
+        text = _GROUP_COMMENT_RE.sub("", response).strip()
+        end_pos = text.find(_END_SENTINEL)
+        if end_pos != -1:
+            text = text[:end_pos].strip()
+        if text:
+            blocks[0].translated_text = text
+            matched_ids.add(blocks[0].id)
     return matched_ids
-
-
-def _fallback_split(response: str, blocks: list[ContentBlock]) -> None:
-    if len(blocks) == 1:
-        blocks[0].translated_text = response.strip()
-        return
-
-    paragraphs: list[str] = []
-    current: list[str] = []
-    for line in response.strip().splitlines():
-        if line.strip():
-            current.append(line)
-            continue
-        if current:
-            paragraphs.append("\n".join(current))
-            current = []
-    if current:
-        paragraphs.append("\n".join(current))
-
-    if len(paragraphs) == len(blocks):
-        for block, paragraph in zip(blocks, paragraphs):
-            block.translated_text = paragraph.strip()
-        return
-
-    response_lines = response.strip().splitlines()
-    source_lines = [max(1, len(block.source_text.strip().splitlines())) for block in blocks]
-    total = sum(source_lines)
-    line_idx = 0
-    for idx, block in enumerate(blocks):
-        take = max(1, round(source_lines[idx] / total * len(response_lines)))
-        block.translated_text = "\n".join(response_lines[line_idx : line_idx + take]).strip()
-        line_idx += take
-    if line_idx < len(response_lines):
-        tail = "\n".join(response_lines[line_idx:]).strip()
-        if tail:
-            blocks[-1].translated_text = (blocks[-1].translated_text + "\n" + tail).strip()
 
 
 def _segment_translation_text(blocks: list[ContentBlock]) -> str:

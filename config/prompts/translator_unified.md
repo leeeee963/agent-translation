@@ -23,13 +23,16 @@ Context (for continuity — do not reproduce):
 - **Preserve exactly** — code, paths, URLs, markup, numbers, dates, units, structural markers (e.g. "Page 1", "Slide 2"), and any English terms the glossary keeps in original script.
 - **Lexical consistency** — same source term = same translation everywhere.
 - **No syntactic calques** — never copy source punctuation-as-grammar (em-dash appositives, cleft sentences, etc.).
+- **Visual groups** — when several blocks are introduced by `<!-- group: X -->`, they belong to one visual unit (a slide text box, table cell, or notes pane). Translate them as a coherent whole — same register, parallel bullet form — but always emit each block on its own `[[BLOCK:id]]` line. Never merge two blocks into one marker, never drop a block, never reorder.
 
 ## Output format — MANDATORY
 
-Marker on its own line, then translation immediately after. No blank line between marker and text. Every `[[BLOCK:id]]` appears exactly once, in original order. No commentary.
+Marker on its own line, then translation immediately after. No blank line between marker and text. Every `[[BLOCK:id]]` appears exactly once, in original order. After the very last block, emit `[[END]]` on its own line — this terminates the structured output. No commentary anywhere.
 
 [[BLOCK:id1]]
 your writing for block 1
 
 [[BLOCK:id2]]
 your writing for block 2
+
+[[END]]

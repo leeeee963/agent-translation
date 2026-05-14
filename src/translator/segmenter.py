@@ -172,13 +172,63 @@ class Segmenter:
                 current_slide_count = 0
 
             if slide_tokens > max_tokens and not current:
-                segments.extend(self._segment_general(slide_blocks, max_tokens, 6))
+                # Single slide too large — split by text_frame_group as the
+                # atomic unit so we never break a visual group across segments.
+                segments.extend(self._segment_by_groups(slide_blocks, max_tokens))
                 continue
 
             current.extend(slide_blocks)
             current_tokens += slide_tokens
             current_slide_count += 1
 
+        if current:
+            segments.append(current)
+        return segments
+
+    def _segment_by_groups(
+        self,
+        blocks: list[ContentBlock],
+        max_tokens: int,
+    ) -> list[list[ContentBlock]]:
+        """Pack blocks into segments while keeping each text_frame_group atomic.
+
+        Consecutive blocks sharing the same ``text_frame_group`` are bundled and
+        assigned together. A bundle larger than ``max_tokens`` is shipped intact
+        with a warning — splitting it would re-introduce the silent line-drop
+        class of bugs this module exists to prevent.
+        """
+        bundles: list[list[ContentBlock]] = []
+        current_bundle: list[ContentBlock] = []
+        current_bundle_id: str | None = None
+        for block in blocks:
+            gid = block.metadata.get("text_frame_group") or block.id
+            if gid != current_bundle_id and current_bundle:
+                bundles.append(current_bundle)
+                current_bundle = []
+            current_bundle.append(block)
+            current_bundle_id = gid
+        if current_bundle:
+            bundles.append(current_bundle)
+
+        segments: list[list[ContentBlock]] = []
+        current: list[ContentBlock] = []
+        current_tokens = 0.0
+        for bundle in bundles:
+            bundle_tokens = sum(_estimate_tokens(b.source_text) for b in bundle)
+            if current and current_tokens + bundle_tokens > max_tokens:
+                segments.append(current)
+                current = []
+                current_tokens = 0.0
+            if bundle_tokens > max_tokens:
+                logger.warning(
+                    "text_frame_group %s exceeds max_tokens (%d > %d); "
+                    "shipping intact to avoid splitting a visual group",
+                    bundle[0].metadata.get("text_frame_group", bundle[0].id),
+                    int(bundle_tokens),
+                    max_tokens,
+                )
+            current.extend(bundle)
+            current_tokens += bundle_tokens
         if current:
             segments.append(current)
         return segments
@@ -231,17 +281,36 @@ class Segmenter:
         segments: list[list[ContentBlock]] = []
         current: list[ContentBlock] = []
         current_tokens = 0.0
+        current_group: str | None = None
 
         for block in blocks:
             block_tokens = _estimate_tokens(block.source_text)
-            force_break = current and block.type == BlockType.HEADING
+            block_group = block.metadata.get("text_frame_group")
+            # Never split a text_frame_group across segments — same atomicity
+            # guarantee as the PPTX path.
+            in_active_group = (
+                current_group is not None
+                and block_group is not None
+                and block_group == current_group
+            )
+            force_break = (
+                current
+                and block.type == BlockType.HEADING
+                and not in_active_group
+            )
             soft_break = (
                 current
                 and len(current) >= preferred_cluster_size
                 and _SENTENCE_END.search(current[-1].source_text)
+                and not in_active_group
+            )
+            size_break = (
+                current
+                and current_tokens + block_tokens > max_tokens
+                and not in_active_group
             )
 
-            if current and (force_break or soft_break or current_tokens + block_tokens > max_tokens):
+            if force_break or soft_break or size_break:
                 split_idx = self._find_best_split(current)
                 if split_idx and split_idx < len(current):
                     segments.append(current[:split_idx])
@@ -256,6 +325,7 @@ class Segmenter:
 
             current.append(block)
             current_tokens += block_tokens
+            current_group = block_group
 
         if current:
             segments.append(current)
@@ -307,6 +377,12 @@ class Segmenter:
             return None
 
         for idx in range(len(blocks) - 1, 0, -1):
+            prev_group = blocks[idx - 1].metadata.get("text_frame_group")
+            cur_group = blocks[idx].metadata.get("text_frame_group")
+            # Never split inside a text_frame_group (same atomicity guarantee
+            # the PPTX path enforces).
+            if prev_group and prev_group == cur_group:
+                continue
             if blocks[idx].type == BlockType.HEADING:
                 return idx
             if _SENTENCE_END.search(blocks[idx - 1].source_text):

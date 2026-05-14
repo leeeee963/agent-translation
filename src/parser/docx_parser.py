@@ -274,18 +274,51 @@ class DocxParser(BaseParser):
         word_count = 0
 
         # ── body paragraphs ──────────────────────────────────────────
+        # Group consecutive list items sharing the same list_num_id so the
+        # LLM treats them as one visual unit (parallel bullet form, same
+        # register). Standalone paragraphs each form their own group.
+        current_list_id: int | None = None
+        current_list_group: str | None = None
+        list_para_idx = 0
         for i, para in enumerate(doc.paragraphs):
             block = self._para_to_block(para, f"p_{i}")
-            if block:
-                blocks.append(block)
-                word_count += len(block.source_text.split())
+            if block is None:
+                # A non-translatable paragraph (URL/blank/numbers-only) still
+                # breaks list continuity — start a fresh group on the next one.
+                current_list_id = None
+                current_list_group = None
+                list_para_idx = 0
+                continue
+            num_id = block.metadata.get("list_num_id")
+            if num_id is not None and num_id == current_list_id:
+                group = current_list_group
+                list_para_idx += 1
+            elif num_id is not None:
+                group = f"body_list_{i}"
+                current_list_id = num_id
+                current_list_group = group
+                list_para_idx = 0
+            else:
+                group = f"body_p_{i}"
+                current_list_id = None
+                current_list_group = None
+                list_para_idx = 0
+            block.metadata["text_frame_group"] = group
+            block.metadata["group_kind"] = (
+                "body_list" if num_id is not None else "body_paragraph"
+            )
+            block.metadata["para_index"] = list_para_idx
+            blocks.append(block)
+            word_count += len(block.source_text.split())
 
         # ── tables ───────────────────────────────────────────────────
         for t_idx, table in enumerate(doc.tables):
             for r_idx, row in enumerate(table.rows):
                 for c_idx, cell in enumerate(row.cells):
+                    cell_group = f"tbl{t_idx}_r{r_idx}_c{c_idx}"
+                    cell_para_idx = 0
                     for p_idx, para in enumerate(cell.paragraphs):
-                        bid = f"tbl{t_idx}_r{r_idx}_c{c_idx}_p{p_idx}"
+                        bid = f"{cell_group}_p{p_idx}"
                         block = self._para_to_block(
                             para,
                             bid,
@@ -294,11 +327,15 @@ class DocxParser(BaseParser):
                                 "table_idx": t_idx,
                                 "row": r_idx,
                                 "col": c_idx,
+                                "text_frame_group": cell_group,
+                                "group_kind": "table_cell",
+                                "para_index": cell_para_idx,
                             },
                         )
                         if block:
                             blocks.append(block)
                             word_count += len(block.source_text.split())
+                            cell_para_idx += 1
 
         # ── headers / footers ────────────────────────────────────────
         for sec_idx, section in enumerate(doc.sections):
@@ -309,13 +346,23 @@ class DocxParser(BaseParser):
                 if hf_obj is None:
                     continue
                 try:
+                    hf_group = f"sec{sec_idx}_{hf_name}"
+                    hf_para_idx = 0
                     for p_idx, para in enumerate(hf_obj.paragraphs):
-                        bid = f"sec{sec_idx}_{hf_name}_p{p_idx}"
+                        bid = f"{hf_group}_p{p_idx}"
                         block = self._para_to_block(
-                            para, bid, extra_meta={"section": hf_name}
+                            para,
+                            bid,
+                            extra_meta={
+                                "section": hf_name,
+                                "text_frame_group": hf_group,
+                                "group_kind": "header_footer",
+                                "para_index": hf_para_idx,
+                            },
                         )
                         if block:
                             blocks.append(block)
+                            hf_para_idx += 1
                 except Exception:
                     logger.debug("Could not parse %s in section %d", hf_name, sec_idx)
 
@@ -327,15 +374,25 @@ class DocxParser(BaseParser):
 
             for tb_idx, txbx_content in enumerate(_xpath_txbx(doc.element.body)):
                 p_elems = txbx_content.findall(f"{{{_W_NS}}}p")
+                tb_group = f"txbx{tb_idx}"
+                tb_para_idx = 0
                 for p_idx, p_elem in enumerate(p_elems):
                     para = Paragraph(p_elem, doc.part)
-                    bid = f"txbx{tb_idx}_p{p_idx}"
+                    bid = f"{tb_group}_p{p_idx}"
                     block = self._para_to_block(
-                        para, bid, extra_meta={"in_textbox": True}
+                        para,
+                        bid,
+                        extra_meta={
+                            "in_textbox": True,
+                            "text_frame_group": tb_group,
+                            "group_kind": "textbox",
+                            "para_index": tb_para_idx,
+                        },
                     )
                     if block:
                         blocks.append(block)
                         word_count += len(block.source_text.split())
+                        tb_para_idx += 1
         except Exception:
             logger.debug("Could not parse textbox content", exc_info=True)
 
@@ -510,11 +567,21 @@ class DocxParser(BaseParser):
 
     @staticmethod
     def _compose_output_text(block: ContentBlock) -> str:
-        text = BaseParser._best_text(block)
+        # Prefer reviewed/translated; never blank a paragraph — fall back to source.
+        preferred = (block.reviewed_text or "").strip() or (block.translated_text or "").strip()
+        if not preferred:
+            preferred = block.source_text
+        # A per-paragraph block is single-line by contract. Word <w:t> elements
+        # don't render literal \n — they show as nothing or a stray glyph in
+        # some viewers. Collapse any newlines the LLM may have injected.
+        flat = preferred.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
+        while "  " in flat:
+            flat = flat.replace("  ", " ")
+        flat = flat.strip()
         prefix = str(block.metadata.get("list_prefix") or "")
-        if prefix and text and not text.startswith(prefix):
-            return f"{prefix}{text}"
-        return text
+        if prefix and flat and not flat.startswith(prefix):
+            return f"{prefix}{flat}"
+        return flat
 
     @staticmethod
     def _write_back(para, translated_text: str) -> None:
