@@ -1,31 +1,38 @@
 /**
- * File download utility — fetch + Blob + a.download
+ * File download utility.
+ *
+ * Uses a native <a href download> click — the browser streams the file
+ * directly, so the download starts the instant the user clicks. The previous
+ * `await fetch + blob + click` pattern blocked for the entire transfer
+ * (20+ seconds for a 21 MB file with no UI feedback), which made users
+ * click again and again and triggered N concurrent downloads.
+ *
+ * The backend serves these URLs with `Content-Disposition: attachment` already
+ * (see FileResponse(..., filename=...) in src/server.py), so we don't need
+ * to fetch headers client-side to pick the filename.
+ *
+ * A small per-URL dedupe window (1 s) absorbs accidental double-clicks
+ * defensively, even though the click itself is now instantaneous.
  */
 
-import { toast } from "sonner";
+const recentClicks = new Map<string, number>();
+const DEDUPE_WINDOW_MS = 1000;
 
-export async function downloadFile(url: string, filename?: string): Promise<void> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Download failed: ${response.status}`);
+export function downloadFile(url: string, filename?: string): void {
+  const now = Date.now();
+  const last = recentClicks.get(url) ?? 0;
+  if (now - last < DEDUPE_WINDOW_MS) return;
+  recentClicks.set(url, now);
 
-  if (!filename) {
-    const disposition = response.headers.get('Content-Disposition');
-    if (disposition) {
-      const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';\n]+)/i);
-      if (match) filename = decodeURIComponent(match[1]);
-    }
-    if (!filename) filename = url.split('/').pop() || 'download';
-  }
-
-  const blob = await response.blob();
-  const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = blobUrl;
-  a.download = filename;
+  a.href = url;
+  // An empty `download` attribute tells the browser to download instead of
+  // navigate; the actual filename comes from the server's Content-Disposition.
+  a.download = filename ?? '';
+  a.rel = 'noopener';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(blobUrl);
 }
 
 export async function saveContent(content: string, filename: string): Promise<void> {
