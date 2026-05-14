@@ -609,18 +609,24 @@ def _expected_after_translation(parsed: ParsedFile) -> dict[str, dict[int, str]]
     So the expected ``para.text`` for an icon-prefixed paragraph like
     ``<icon>favorite</icon> liked item`` is ``"favorite [T]liked item"``.
     """
-    expected: dict[str, dict[int, str]] = {}
+    # {group: {(para_idx, line_idx): expected_full_para_text_contribution}}
+    # We collapse to {group: {para_idx: concatenated text}} because para.text
+    # is the visible string at verification time.
+    by_group_para: dict[str, dict[int, list[tuple[int, str]]]] = {}
     for block in parsed.blocks:
         group = block.metadata.get("text_frame_group")
         para_idx = block.metadata.get("para_index")
         if group is None or para_idx is None:
             continue
-        runs_kind = (block.metadata.get("para_format") or {}).get("runs_kind") or []
+        line_idx = int(block.metadata.get("line_index") or 0)
+        line_fmt = block.metadata.get("line_format") or {}
+        runs_kind = line_fmt.get("runs_kind") or []
+        trailing_break = line_fmt.get("trailing_break")
         lead_ws = block.metadata.get("lead_ws", "")
         trail_ws = block.metadata.get("trail_ws", "")
         text_part = lead_ws + f"[T]{block.source_text}" + trail_ws
         if not runs_kind:
-            full = text_part
+            line_str = text_part
         else:
             parts: list[str] = []
             written = False
@@ -630,11 +636,20 @@ def _expected_after_translation(parsed: ParsedFile) -> dict[str, dict[int, str]]
                 elif not written:
                     parts.append(text_part)
                     written = True
-                # else: cleared (other non-icon runs collapse into the first)
             if not written:
                 parts.append(text_part)
-            full = "".join(parts)
-        expected.setdefault(group, {})[int(para_idx)] = full
+            line_str = "".join(parts)
+        if trailing_break == "newline":
+            line_str = line_str + "\n"
+        by_group_para.setdefault(group, {}).setdefault(int(para_idx), []).append(
+            (line_idx, line_str)
+        )
+
+    expected: dict[str, dict[int, str]] = {}
+    for group, paras in by_group_para.items():
+        for para_idx, lines in paras.items():
+            lines.sort(key=lambda kv: kv[0])
+            expected.setdefault(group, {})[para_idx] = "".join(s for _, s in lines)
     return expected
 
 
@@ -775,8 +790,10 @@ def test_per_paragraph_block_ids(adversarial_pptx_path):
     for b in text_frame_blocks:
         assert b.metadata.get("text_frame_group"), b.id
         assert b.metadata.get("para_index") is not None, b.id
-        assert re.search(r"_p\d+$", b.id), b.id
-        # Source text is one paragraph — must not contain newlines.
+        assert b.metadata.get("line_index") is not None, b.id
+        # Block id format: ..._p{K}_l{L} (paragraph + soft-line within).
+        assert re.search(r"_p\d+_l\d+$", b.id), b.id
+        # Source text is a single soft-line — must not contain newlines.
         assert "\n" not in b.source_text, b.id
 
 
@@ -1020,6 +1037,137 @@ def test_reviewed_text_takes_precedence(adversarial_pptx_path, tmp_path):
                     raise AssertionError(
                         f"reviewed_text was not honored: {t!r}"
                     )
+
+
+def test_soft_line_break_split(tmp_path):
+    """Reproduce the *exact* failure pattern from the user's DSCI 5800 deck:
+    a single <a:p> contains a bold header + literal '\\n' + a non-bold first
+    bullet (a PowerPoint soft line break). Two subsequent <a:p>s carry the
+    other bullets.
+
+    Old behavior: header + first bullet land in one block; LLM reshuffles and
+    silently drops the last bullet.
+
+    New behavior: each soft line becomes its own block; faithful translation
+    preserves all 4 visual lines (header + 3 bullets); the bold/non-bold
+    format is preserved per-line; the soft line break is preserved in XML.
+    """
+    from pptx import Presentation as _P
+    from pptx.util import Inches, Pt
+    from lxml import etree
+
+    prs = _P()
+    blank = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(blank)
+
+    tx = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(6), Inches(4))
+    tf = tx.text_frame
+    # Build paragraph 0: bold header + soft \n + non-bold first bullet
+    p0 = tf.paragraphs[0]
+    r_hdr = p0.add_run()
+    r_hdr.text = "Characteristics\n"  # trailing \n = soft line break
+    r_hdr.font.bold = True
+    r_bul1 = p0.add_run()
+    r_bul1.text = "• Strong long-context orientation."
+    # Paragraphs 1 and 2: the other two bullets
+    p1 = tf.add_paragraph()
+    p1.add_run().text = "• Designed for multi-step agent workflows."
+    p2 = tf.add_paragraph()
+    p2.add_run().text = "• Useful for code, documents, and research tasks."
+
+    src = str(tmp_path / "softbreak.pptx")
+    prs.save(src)
+
+    # --- Parse ---
+    parsed = PptxParser().parse(src)
+    blocks = sorted(parsed.blocks, key=lambda b: b.id)
+
+    # Expect 4 blocks total: header (p0_l0), first bullet (p0_l1), second
+    # bullet (p1_l0), third bullet (p2_l0). NOT 3 blocks.
+    assert len(blocks) == 4, f"expected 4 blocks, got {len(blocks)}: {[b.id for b in blocks]}"
+
+    ids = [b.id for b in blocks]
+    assert ids[0].endswith("_p0_l0")
+    assert ids[1].endswith("_p0_l1")
+    assert ids[2].endswith("_p1_l0")
+    assert ids[3].endswith("_p2_l0")
+
+    # Source text must not contain newlines (each block is one soft-line).
+    for b in blocks:
+        assert "\n" not in b.source_text, b.id
+
+    # Per-line format: header is bold, bullets are not.
+    fmt0 = blocks[0].metadata["line_format"]
+    fmt1 = blocks[1].metadata["line_format"]
+    assert fmt0["bold"] is True, "header line lost its bold"
+    assert fmt1["bold"] is not True, "bullet line wrongly inherited bold"
+
+    # The soft break must be recorded so rebuild can restore it.
+    assert fmt0["trailing_break"] == "newline"
+    assert fmt1["trailing_break"] is None
+
+    # --- Faithful translate + rebuild ---
+    _apply_translations(parsed, _faithful_response)
+    out_path = str(tmp_path / "out_softbreak.pptx")
+    PptxParser().rebuild(parsed, out_path)
+
+    # Verify the rebuilt file:
+    #  • 3 <a:p> paragraphs preserved (no extra, no missing)
+    #  • Paragraph 0 still has the soft line break ('\n' at end of first run)
+    #  • All 4 visual lines have their [T]<source> translation
+    out = _P(out_path)
+    out_tf = list(out.slides[0].shapes)[0].text_frame
+    out_paras = list(out_tf.paragraphs)
+    assert len(out_paras) == 3, f"paragraph count changed: {len(out_paras)}"
+
+    # Paragraph 0: must contain BOTH the header translation AND the first
+    # bullet translation, with a \n between them (the soft line break).
+    p0_text = out_paras[0].text
+    assert "[T]Characteristics" in p0_text, p0_text
+    assert "[T]• Strong long-context orientation." in p0_text, p0_text
+    assert "\n" in p0_text, f"soft line break lost in p0: {p0_text!r}"
+
+    # Subsequent bullets in their own paragraphs.
+    assert "[T]• Designed for multi-step agent workflows." in out_paras[1].text
+    assert "[T]• Useful for code, documents, and research tasks." in out_paras[2].text
+
+    # Format: header run still bold, bullet runs not bold.
+    p0_runs = list(out_paras[0].runs)
+    hdr_run = next(r for r in p0_runs if "Characteristics" in r.text)
+    bul_run = next(r for r in p0_runs if "Strong" in r.text)
+    assert hdr_run.font.bold is True, "rebuilt header run lost bold"
+    # Bullet run inherits None (theme default) — must not be True.
+    assert bul_run.font.bold is not True, "rebuilt bullet run wrongly bold"
+
+
+def test_soft_line_break_dropped_bullet_resists_adversary(tmp_path):
+    """Same source as above, but with an adversary that always drops the last
+    block of every group. The pipeline must still recover all 4 lines."""
+    from pptx import Presentation as _P
+    from pptx.util import Inches
+
+    prs = _P()
+    blank = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(blank)
+    tx = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(6), Inches(4))
+    tf = tx.text_frame
+    p0 = tf.paragraphs[0]
+    r_hdr = p0.add_run()
+    r_hdr.text = "Characteristics\n"
+    r_hdr.font.bold = True
+    p0.add_run().text = "• Strong long-context orientation."
+    tf.add_paragraph().add_run().text = "• Designed for multi-step agent workflows."
+    tf.add_paragraph().add_run().text = "• Useful for code, documents, and research tasks."
+    src = str(tmp_path / "softbreak_adv.pptx")
+    prs.save(src)
+
+    parser = PptxParser()
+    parsed = parser.parse(src)
+    _apply_translations(parsed, adversary_drop_last, persistent=True)
+
+    out = str(tmp_path / "out_softbreak_adv.pptx")
+    parser.rebuild(parsed, out)
+    _assert_rebuild_matches(out, parsed_source=parsed, source_pptx=src)
 
 
 def test_segmenter_keeps_groups_together(adversarial_pptx_path):

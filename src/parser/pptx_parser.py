@@ -37,9 +37,9 @@ from src.parser.base import BaseParser
 from src.parser.pptx_diagram import build_diagram_map, parse_diagram, rebuild_diagrams
 from src.parser.pptx_text import (
     _flatten_for_paragraph,
-    get_para_dominant_fmt,
+    _line_dominant_fmt,
+    split_para_into_soft_lines,
     warn_overflow,
-    write_para_with_fmt,
     write_paragraphs_by_index,
 )
 from src.utils.layout_fixer import adjust_runs_font_size, enable_autofit
@@ -177,49 +177,74 @@ class PptxParser(BaseParser):
         shape_idx: int,
         block_id_base: str,
     ) -> list[ContentBlock]:
+        return self._parse_text_frame_lines(
+            tf,
+            block_id_base=block_id_base,
+            base_meta={
+                "slide_index": slide_idx,
+                "shape_index": shape_idx,
+                "shape_kind": "text_frame",
+                "text_frame_group": block_id_base,
+                "group_kind": "text_frame",
+            },
+            heading_aware=True,
+        )
+
+    def _parse_text_frame_lines(
+        self,
+        tf,
+        *,
+        block_id_base: str,
+        base_meta: dict,
+        heading_aware: bool,
+    ) -> list[ContentBlock]:
+        """Walk *tf* paragraph-by-paragraph, splitting each <a:p> at any soft
+        line break (literal ``\\n`` in run text or ``<a:br/>``). Each resulting
+        visual line becomes its own ContentBlock.
+        """
         blocks: list[ContentBlock] = []
-        paras_info = [get_para_dominant_fmt(para) for para in tf.paragraphs]
-        total_paras = len(paras_info)
+        paras = list(tf.paragraphs)
+        total_paras = len(paras)
 
-        for para_idx, pi in enumerate(paras_info):
-            raw = pi.get("translatable_text") or ""
-            text = raw.strip()
-            if not text:
-                continue  # spacer or icon-only — no translatable content
+        for para_idx, para in enumerate(paras):
+            soft_lines = split_para_into_soft_lines(para)
+            for line_idx, line in enumerate(soft_lines):
+                line_fmt = _line_dominant_fmt(line)
+                raw = line_fmt.get("translatable_text") or ""
+                text = raw.strip()
+                if not text:
+                    continue  # spacer or icon-only
 
-            # Preserve any whitespace surrounding the translatable text so we
-            # can re-apply it at rebuild (matters for icon-prefixed paragraphs
-            # like "<icon>favorite</icon> liked item" where the leading space
-            # is the visual separator).
-            lead_ws = raw[: len(raw) - len(raw.lstrip())]
-            trail_ws = raw[len(raw.rstrip()) :]
+                lead_ws = raw[: len(raw) - len(raw.lstrip())]
+                trail_ws = raw[len(raw.rstrip()) :]
 
-            font_size = pi.get("font_size") or 0
-            block_type = (
-                BlockType.HEADING
-                if font_size >= _HEADING_FONT_SIZE_THRESHOLD
-                else BlockType.PARAGRAPH
-            )
+                font_size = line_fmt.get("font_size") or 0
+                if heading_aware and font_size >= _HEADING_FONT_SIZE_THRESHOLD:
+                    block_type = BlockType.HEADING
+                else:
+                    block_type = base_meta.get("default_block_type") or BlockType.PARAGRAPH
 
-            blocks.append(
-                ContentBlock(
-                    id=f"{block_id_base}_p{para_idx}",
-                    type=block_type,
-                    source_text=text,
-                    metadata={
-                        "slide_index": slide_idx,
-                        "shape_index": shape_idx,
-                        "shape_kind": "text_frame",
-                        "text_frame_group": block_id_base,
-                        "group_kind": "text_frame",
+                meta = dict(base_meta)
+                meta.pop("default_block_type", None)
+                meta.update(
+                    {
                         "para_index": para_idx,
+                        "line_index": line_idx,
                         "total_paras": total_paras,
-                        "para_format": pi,
+                        "line_format": line_fmt,
                         "lead_ws": lead_ws,
                         "trail_ws": trail_ws,
-                    },
+                    }
                 )
-            )
+
+                blocks.append(
+                    ContentBlock(
+                        id=f"{block_id_base}_p{para_idx}_l{line_idx}",
+                        type=block_type,
+                        source_text=text,
+                        metadata=meta,
+                    )
+                )
         return blocks
 
     def _parse_table(
@@ -229,72 +254,37 @@ class PptxParser(BaseParser):
         for row_idx, row in enumerate(table.rows):
             for col_idx, cell in enumerate(row.cells):
                 cell_group = f"{block_id_base}_r{row_idx}c{col_idx}"
-                paras_info = [
-                    get_para_dominant_fmt(p)
-                    for p in cell.text_frame.paragraphs
-                ]
-                total_paras = len(paras_info)
-                for para_idx, pi in enumerate(paras_info):
-                    raw = pi.get("translatable_text") or ""
-                    text = raw.strip()
-                    if not text:
-                        continue
-                    lead_ws = raw[: len(raw) - len(raw.lstrip())]
-                    trail_ws = raw[len(raw.rstrip()) :]
-                    blocks.append(
-                        ContentBlock(
-                            id=f"{cell_group}_p{para_idx}",
-                            type=BlockType.PARAGRAPH,
-                            source_text=text,
-                            metadata={
-                                "slide_index": slide_idx,
-                                "shape_kind": "table_cell",
-                                "text_frame_group": cell_group,
-                                "group_kind": "table_cell",
-                                "para_index": para_idx,
-                                "total_paras": total_paras,
-                                "para_format": pi,
-                                "table_block": block_id_base,
-                                "row": row_idx,
-                                "col": col_idx,
-                                "lead_ws": lead_ws,
-                                "trail_ws": trail_ws,
-                            },
-                        )
+                blocks.extend(
+                    self._parse_text_frame_lines(
+                        cell.text_frame,
+                        block_id_base=cell_group,
+                        base_meta={
+                            "slide_index": slide_idx,
+                            "shape_kind": "table_cell",
+                            "text_frame_group": cell_group,
+                            "group_kind": "table_cell",
+                            "table_block": block_id_base,
+                            "row": row_idx,
+                            "col": col_idx,
+                        },
+                        heading_aware=False,
                     )
+                )
         return blocks
 
     def _parse_notes(self, slide, slide_idx: int) -> list[ContentBlock]:
-        blocks: list[ContentBlock] = []
-        notes_tf = slide.notes_slide.notes_text_frame
         notes_group = f"slide{slide_idx}_note"
-        paras_info = [get_para_dominant_fmt(p) for p in notes_tf.paragraphs]
-        total_paras = len(paras_info)
-        for para_idx, pi in enumerate(paras_info):
-            raw = pi.get("translatable_text") or ""
-            text = raw.strip()
-            if not text:
-                continue
-            lead_ws = raw[: len(raw) - len(raw.lstrip())]
-            trail_ws = raw[len(raw.rstrip()) :]
-            blocks.append(
-                ContentBlock(
-                    id=f"{notes_group}_p{para_idx}",
-                    type=BlockType.SLIDE_NOTE,
-                    source_text=text,
-                    metadata={
-                        "slide_index": slide_idx,
-                        "text_frame_group": notes_group,
-                        "group_kind": "notes",
-                        "para_index": para_idx,
-                        "total_paras": total_paras,
-                        "para_format": pi,
-                        "lead_ws": lead_ws,
-                        "trail_ws": trail_ws,
-                    },
-                )
-            )
-        return blocks
+        return self._parse_text_frame_lines(
+            slide.notes_slide.notes_text_frame,
+            block_id_base=notes_group,
+            base_meta={
+                "slide_index": slide_idx,
+                "text_frame_group": notes_group,
+                "group_kind": "notes",
+                "default_block_type": BlockType.SLIDE_NOTE,
+            },
+            heading_aware=False,
+        )
 
     def _parse_chart(
         self, chart, slide_idx: int, block_id_base: str
@@ -412,14 +402,14 @@ class PptxParser(BaseParser):
     @staticmethod
     def _build_group_map(
         block_map: dict[str, ContentBlock],
-    ) -> dict[str, dict[int, ContentBlock]]:
-        """Group per-paragraph blocks by their parent text_frame_group.
+    ) -> dict[str, dict[tuple[int, int], ContentBlock]]:
+        """Group per-soft-line blocks by their parent text_frame_group.
 
-        Returns ``{group_id: {para_index: block}}`` for fast rebuild lookup.
-        Blocks without ``text_frame_group`` (charts, fallback shapes,
-        diagrams) are ignored here — they take a different rebuild path.
+        Returns ``{group_id: {(para_index, line_index): block}}`` for fast
+        rebuild lookup. Blocks without ``text_frame_group`` (charts, fallback
+        shapes, diagrams) are ignored — they take a different rebuild path.
         """
-        group_map: dict[str, dict[int, ContentBlock]] = {}
+        group_map: dict[str, dict[tuple[int, int], ContentBlock]] = {}
         for block in block_map.values():
             group = block.metadata.get("text_frame_group")
             if not group:
@@ -427,7 +417,8 @@ class PptxParser(BaseParser):
             para_idx = block.metadata.get("para_index")
             if para_idx is None:
                 continue
-            group_map.setdefault(group, {})[int(para_idx)] = block
+            line_idx = int(block.metadata.get("line_index") or 0)
+            group_map.setdefault(group, {})[(int(para_idx), line_idx)] = block
         return group_map
 
     def _rebuild_shape_tree(

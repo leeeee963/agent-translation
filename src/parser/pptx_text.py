@@ -1,14 +1,24 @@
 """Paragraph-level text formatting helpers for PPTX parsing and rebuilding.
 
-Per-paragraph block model (from 2026-05): each PPTX paragraph that carries
-translatable text is its own ContentBlock. The LLM returns one [[BLOCK:id]]
-per paragraph, so newline-based splitting heuristics are gone — rebuild looks
-up the translation by (text_frame_group, para_index) and writes it directly.
+Per-soft-line block model (revised 2026-05): each PPTX *visual line* is its
+own ContentBlock. A "visual line" is bounded by:
+  • the start/end of a <a:p> paragraph,
+  • a literal "\\n" inside an <a:t> run text (PowerPoint stores a soft line
+    break this way), or
+  • an <a:br/> element between runs.
+
+The block id encodes both the paragraph and the soft-line within it:
+``slide{N}_shape{M}_p{K}_l{L}``. The LLM returns one [[BLOCK:id]] per soft
+line, so a header + bullet packed into one <a:p> via soft break gets two
+separate markers — no more silent content reshuffle when the LLM gets
+confused by multi-line block content.
 """
 
 from __future__ import annotations
 
 import logging
+
+from lxml import etree
 
 logger = logging.getLogger(__name__)
 
@@ -57,17 +67,79 @@ def _run_is_icon(run) -> bool:
     return False
 
 
-def get_para_dominant_fmt(para) -> dict:
-    """Analyse all runs in *para* and return the dominant character format.
+def split_para_into_soft_lines(para) -> list[dict]:
+    """Split a paragraph into visual lines.
 
-    "Dominant" means the format covers >= 40% of the paragraph's characters.
-    Only *explicitly* set run attributes (True/False, not None=inherited) are
-    considered — None means "inherit from theme/master" and is left untouched.
+    Boundaries: a literal ``\\n`` at the end of a run's text, an ``<a:br/>``
+    element between runs, or the paragraph itself starting/ending.
 
-    Returns a dict with keys: text, translatable_text, runs_kind,
-                               bold, italic, underline,
-                               font_name, font_size (EMU int), color.
+    Returns a list of line dicts in document order:
+      ``{"runs": [Run, ...], "trailing_break": "newline" | "br" | None}``
+
+    A line with no runs (empty soft-line, e.g., consecutive ``<a:br/>``) is
+    still emitted so para-rebuild can preserve the visual gap.
     """
+    run_map = {r._r: r for r in para.runs}
+
+    lines: list[dict] = []
+    current: dict = {"runs": [], "trailing_break": None}
+
+    for child in para._p:
+        tag = etree.QName(child.tag).localname
+        if tag == "r":
+            run = run_map.get(child)
+            if run is None:
+                continue
+            current["runs"].append(run)
+            text = run.text or ""
+            if text.endswith("\n"):
+                # The soft break lives at the end of this run's text.
+                current["trailing_break"] = "newline"
+                lines.append(current)
+                current = {"runs": [], "trailing_break": None}
+            elif "\n" in text:
+                # Mid-run \n: rare but possible. We don't currently split a
+                # single <a:r> across two soft lines because that would
+                # require restructuring the XML. Log so we know if we hit it.
+                logger.warning(
+                    "Mid-run \\n encountered in paragraph; soft-line "
+                    "splitting may be coarse for this paragraph."
+                )
+        elif tag == "br":
+            current["trailing_break"] = "br"
+            lines.append(current)
+            current = {"runs": [], "trailing_break": None}
+
+    if current["runs"] or not lines:
+        lines.append(current)
+
+    return lines
+
+
+def _line_translatable_text(line: dict) -> str:
+    """Concatenate non-icon-run text for a soft line, stripping the trailing
+    ``\\n`` from the last run if that's where the soft break lives."""
+    runs = line["runs"]
+    parts: list[str] = []
+    for i, run in enumerate(runs):
+        if _run_is_icon(run):
+            continue
+        text = run.text or ""
+        if i == len(runs) - 1 and line["trailing_break"] == "newline":
+            text = text.rstrip("\n")
+        parts.append(text)
+    return "".join(parts)
+
+
+def _line_dominant_fmt(line: dict) -> dict:
+    """Return the dominant character format for one soft line.
+
+    Uses the same >= 40% threshold as the previous per-paragraph helper but
+    scoped to runs of this line. Also records ``runs_kind`` so the rebuild
+    knows which runs are icon-fonts (preserve) vs. text (overwrite).
+    """
+    runs = line["runs"]
+
     total_chars = 0
     bold_chars = italic_chars = underline_chars = 0
     any_explicit_bold = any_explicit_italic = any_explicit_underline = False
@@ -75,8 +147,11 @@ def get_para_dominant_fmt(para) -> dict:
     font_size: int | None = None
     color: str | None = None
 
-    for run in para.runs:
-        n = len(run.text)
+    for i, run in enumerate(runs):
+        text = run.text or ""
+        if i == len(runs) - 1 and line["trailing_break"] == "newline":
+            text = text.rstrip("\n")
+        n = len(text)
         total_chars += n
 
         if run.font.bold is True:
@@ -100,7 +175,7 @@ def get_para_dominant_fmt(para) -> dict:
         if font_name is None and run.font.name:
             font_name = run.font.name
         if font_size is None and run.font.size:
-            font_size = run.font.size  # EMU integer
+            font_size = run.font.size
         if color is None:
             try:
                 if run.font.color and run.font.color.type is not None:
@@ -109,65 +184,52 @@ def get_para_dominant_fmt(para) -> dict:
                 pass
 
     runs_kind: list[dict] = []
-    translatable_parts: list[str] = []
-    for run in para.runs:
-        is_icon = _run_is_icon(run)
-        runs_kind.append({"is_icon": is_icon, "text": run.text})
-        if not is_icon:
-            translatable_parts.append(run.text)
-    translatable_text = "".join(translatable_parts)
+    for i, run in enumerate(runs):
+        text = run.text or ""
+        if i == len(runs) - 1 and line["trailing_break"] == "newline":
+            text = text.rstrip("\n")
+        runs_kind.append({"is_icon": _run_is_icon(run), "text": text})
 
     thresh = max(total_chars * 0.4, 0.5)
     return {
-        "text": para.text,
-        "translatable_text": translatable_text,
+        "translatable_text": _line_translatable_text(line),
         "runs_kind": runs_kind,
         "bold": (bold_chars >= thresh) if any_explicit_bold else None,
         "italic": (italic_chars >= thresh) if any_explicit_italic else None,
         "underline": (underline_chars >= thresh) if any_explicit_underline else None,
         "font_name": font_name,
-        "font_size": font_size,   # raw EMU value, or None
+        "font_size": font_size,
         "color": color,
+        "trailing_break": line["trailing_break"],
     }
 
 
-def write_para_with_fmt(para, text: str, fmt: dict | None) -> None:
-    """Write *text* into *para*'s first non-icon run and apply dominant format.
+def _write_soft_line(line: dict, line_format: dict | None, text: str) -> None:
+    """Write *text* into the first non-icon run of *line*; clear other non-icon
+    runs in the same line; preserve icon-font runs and re-apply the line's
+    trailing soft break (``\\n`` appended to the written text, or the existing
+    ``<a:br/>`` element which we don't touch).
 
-    Icon-font runs (Material Icons, Font Awesome, Wingdings, …) are left
-    completely untouched so their ligature glyphs keep rendering correctly.
-    Clears text from other non-icon runs so the paragraph contains exactly
-    one text-bearing run plus any preserved icon runs.
-
-    *text* may not contain newlines — caller must collapse any \\n / \\r first
-    (per-paragraph blocks are single-line by contract).
+    *text* must be single-line (caller flattens any LLM-injected newlines).
     """
-    runs = para.runs
+    runs = line["runs"]
     if not runs:
-        return  # Paragraph has no runs (rare in PPTX); skip safely.
+        return
 
-    fmt = fmt or {}
-    runs_kind = fmt.get("runs_kind")
-    target_idx = 0
-    if runs_kind and len(runs_kind) == len(runs):
-        target_idx = next(
-            (i for i, k in enumerate(runs_kind) if not k.get("is_icon")),
-            -1,
-        )
-        if target_idx == -1:
-            return  # Entire paragraph is icons — nothing translatable to write.
-    else:
-        # Fallback: pick the first non-icon run by inspecting the run itself.
-        target_idx = next(
-            (i for i, r in enumerate(runs) if not _run_is_icon(r)),
-            -1,
-        )
-        if target_idx == -1:
-            return
+    target_idx = next(
+        (i for i, r in enumerate(runs) if not _run_is_icon(r)),
+        -1,
+    )
+    if target_idx == -1:
+        return  # Line is all icons — nothing translatable to overwrite.
 
     target = runs[target_idx]
-    target.text = text
+    text_to_write = text
+    if line["trailing_break"] == "newline":
+        text_to_write = text_to_write + "\n"
+    target.text = text_to_write
 
+    fmt = line_format or {}
     bold = fmt.get("bold")
     italic = fmt.get("italic")
     underline = fmt.get("underline")
@@ -181,9 +243,7 @@ def write_para_with_fmt(para, text: str, fmt: dict | None) -> None:
     for i, run in enumerate(runs):
         if i == target_idx:
             continue
-        if runs_kind and i < len(runs_kind) and runs_kind[i].get("is_icon"):
-            continue  # Preserve icon-font run as-is.
-        if not runs_kind and _run_is_icon(run):
+        if _run_is_icon(run):
             continue
         run.text = ""
 
@@ -205,13 +265,13 @@ def _flatten_for_paragraph(text: str) -> str:
 
 def write_paragraphs_by_index(
     text_frame,
-    paras_blocks: dict[int, "object"],
+    paras_blocks: dict[tuple[int, int], "object"],
 ) -> tuple[str, str]:
-    """Write per-paragraph translations into *text_frame*.
+    """Write per-soft-line translations into *text_frame*.
 
-    *paras_blocks* maps paragraph-index → ContentBlock for paragraphs that had
-    translatable content at parse time. Paragraphs absent from the map are
-    spacers or icon-only — we leave them untouched.
+    *paras_blocks* maps ``(para_index, line_index)`` → ContentBlock for every
+    soft line that had translatable content at parse time. Lines absent from
+    the map are spacers or icon-only — we leave them untouched.
 
     Translation precedence: ``reviewed_text`` then ``translated_text``. If both
     are empty we fall back to ``source_text`` so a missing translation never
@@ -225,32 +285,31 @@ def write_paragraphs_by_index(
     translated_chunks: list[str] = []
 
     for para_idx, para in enumerate(paras):
-        block = paras_blocks.get(para_idx)
-        if block is None:
-            continue
-        preferred = (
-            (block.reviewed_text or "").strip()
-            or (block.translated_text or "").strip()
-        )
-        if preferred:
-            candidate = _flatten_for_paragraph(preferred)
-        else:
-            logger.warning(
-                "Block %s: no translation produced; falling back to source text",
-                getattr(block, "id", "?"),
+        soft_lines = split_para_into_soft_lines(para)
+        for line_idx, line in enumerate(soft_lines):
+            block = paras_blocks.get((para_idx, line_idx))
+            if block is None:
+                continue
+            preferred = (
+                (block.reviewed_text or "").strip()
+                or (block.translated_text or "").strip()
             )
-            candidate = _flatten_for_paragraph(block.source_text)
-        if not candidate:
-            continue
-        meta = block.metadata or {}
-        # Re-apply any leading/trailing whitespace that surrounded the
-        # translatable text in the source paragraph (e.g., the space after
-        # an icon-font ligature).
-        candidate = (meta.get("lead_ws") or "") + candidate + (meta.get("trail_ws") or "")
-        para_format = meta.get("para_format") or {}
-        write_para_with_fmt(para, candidate, para_format)
-        source_chunks.append(block.source_text)
-        translated_chunks.append(candidate)
+            if preferred:
+                candidate = _flatten_for_paragraph(preferred)
+            else:
+                logger.warning(
+                    "Block %s: no translation produced; falling back to source text",
+                    getattr(block, "id", "?"),
+                )
+                candidate = _flatten_for_paragraph(block.source_text)
+            if not candidate:
+                continue
+            meta = block.metadata or {}
+            candidate = (meta.get("lead_ws") or "") + candidate + (meta.get("trail_ws") or "")
+            line_format = meta.get("line_format") or {}
+            _write_soft_line(line, line_format, candidate)
+            source_chunks.append(block.source_text)
+            translated_chunks.append(candidate)
 
     return "\n".join(source_chunks), "\n".join(translated_chunks)
 
